@@ -1,0 +1,23 @@
+version: "3.8"
+
+# Demo lab: Run DVWA (intentionally vulnerable web app) for scanner testing
+# Usage:
+#   docker compose up -d
+#   # Wait ~30s for DVWA to initialize
+#   python ../main.py --url http://localhost:8080 --cookie "security=low; PHPSESSID=abc" -v --format html -o dvwa_scan
+
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8080:80"
+    environment:
+      - MYSQL_ROOT_PASSWORD=dvwa
+    restart: unless-stopped
+
+  # Optional: OWASP WebGoat for API testing
+  webgoat:
+    image: webgoat/webgoat
+    ports:
+      - "9090:8080"
+    restart: unless-stopped

@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python-version }}" }
+      - run: pip install -r requirements.txt pytest pytest-cov flake8
+      - run: flake8 . --max-line-length=120 --exclude=__pycache__,.git,*.egg-info
+      - run: pytest tests/ -v --cov=modules --cov-report=xml
+      - uses: codecov/codecov-action@v4
+        with: { file: coverage.xml, fail_ci_if_error: false }
