@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Web Vulnerability Scan — https://niteshg.com.np/</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;color:#0f172a;padding:24px}
+    .page{max-width:1100px;margin:auto}
+    header{background:#0f172a;color:#f8fafc;padding:28px 32px;border-radius:10px;margin-bottom:24px}
+    header h1{font-size:1.6rem;margin-bottom:6px}
+    header .meta{opacity:.7;font-size:.9rem}
+    .summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+    .stat-box{background:#fff;border-radius:8px;padding:16px 24px;flex:1;min-width:140px;
+               box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center}
+    .stat-box .num{font-size:2rem;font-weight:700}
+    .stat-box .label{font-size:.8rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+    .badge{display:inline-block;padding:3px 10px;border-radius:4px;color:#fff;
+            font-size:.75rem;font-weight:700;text-transform:uppercase}
+    .risk-banner{background:#fff;border-radius:8px;padding:16px;margin-bottom:24px;
+                  box-shadow:0 1px 3px rgba(0,0,0,.1);
+                  border-left:6px solid #d97706}
+    .risk-banner h2{color:#d97706;font-size:1.1rem}
+    section h2{margin-bottom:12px;font-size:1.2rem;color:#1e293b}
+    .card{background:#fff;border-radius:8px;margin-bottom:12px;overflow:hidden;
+           box-shadow:0 1px 3px rgba(0,0,0,.08)}
+    .card-header{padding:12px 16px;background:#f8fafc;display:flex;
+                  align-items:center;gap:10px;flex-wrap:wrap}
+    .owasp-tag{margin-left:auto;color:#64748b;font-size:.8rem;font-family:monospace}
+    .card-body{padding:14px 16px;font-size:.92rem;line-height:1.6}
+    .card-body p{margin-bottom:8px}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:3px;
+          font-family:'Fira Code',monospace;font-size:.85em;word-break:break-all}
+    .evidence{display:block;background:#1e293b;color:#7dd3fc;padding:8px 12px;
+               border-radius:4px;white-space:pre-wrap;margin-top:4px}
+    a{color:#2563eb}
+    footer{margin-top:32px;color:#94a3b8;font-size:.8rem;text-align:center}
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Web Vulnerability Scan Report</h1>
+    <div class="meta">
+      Target: <strong>https://niteshg.com.np/</strong> &nbsp;·&nbsp;
+      Generated: 2026-04-21T02:10:27.220602 &nbsp;·&nbsp;
+      Total findings: 5
+    </div>
+  </header>
+
+  <div class="summary">
+    <div class="stat-box">
+      <div class="num">5</div>
+      <div class="label">Total Findings</div>
+    </div>
+    <div class="stat-box"><div class="num" style="color:#dc2626">0</div><div class="label">CRITICAL</div></div><div class="stat-box"><div class="num" style="color:#ea580c">0</div><div class="label">HIGH</div></div><div class="stat-box"><div class="num" style="color:#d97706">1</div><div class="label">MEDIUM</div></div><div class="stat-box"><div class="num" style="color:#16a34a">3</div><div class="label">LOW</div></div>
+  </div>
+
+  <div class="risk-banner">
+    <h2>Overall Risk: MEDIUM</h2>
+    <div style="margin-top:8px"><span class="badge" style="background:#d97706">1 MEDIUM</span> <span class="badge" style="background:#16a34a">3 LOW</span> <span class="badge" style="background:#2563eb">1 INFORMATIONAL</span></div>
+  </div>
+
+  <section>
+    <h2>Findings (5)</h2>
+    
+      <div class="card">
+        <div class="card-header" style="border-left:5px solid #16a34a">
+          <span class="badge" style="background:#16a34a">LOW</span>
+          <strong>[F001] Information Disclosure via 'Server' Header</strong>
+          <span class="owasp-tag">A05:2021</span>
+        </div>
+        <div class="card-body">
+          <p><strong>URL:</strong> <code>https://niteshg.com.np</code></p>
+          <p><strong>Description:</strong> The response includes 'Server: cloudflare'. Reveals web server software and version. This helps attackers fingerprint the technology stack and target known vulnerabilities.</p>
+          <p><strong>Evidence:</strong> <code class="evidence">Server: cloudflare</code></p>
+          <p><strong>Recommendation:</strong> Remove or anonymize the 'Server' header in server configuration.</p>
+          <p><strong>MITRE ATT&amp;CK:</strong> <a href="https://attack.mitre.org/techniques/T1592/" target="_blank">T1592 — Gather Victim Host Information</a> (Reconnaissance)</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="border-left:5px solid #16a34a">
+          <span class="badge" style="background:#16a34a">LOW</span>
+          <strong>[F002] Information Disclosure via 'X-Powered-By' Header</strong>
+          <span class="owasp-tag">A05:2021</span>
+        </div>
+        <div class="card-body">
+          <p><strong>URL:</strong> <code>https://niteshg.com.np</code></p>
+          <p><strong>Description:</strong> The response includes 'X-Powered-By: CyberPanel-OLS/2.4.4'. Reveals server-side framework or language. This helps attackers fingerprint the technology stack and target known vulnerabilities.</p>
+          <p><strong>Evidence:</strong> <code class="evidence">X-Powered-By: CyberPanel-OLS/2.4.4</code></p>
+          <p><strong>Recommendation:</strong> Remove or anonymize the 'X-Powered-By' header in server configuration.</p>
+          <p><strong>MITRE ATT&amp;CK:</strong> <a href="https://attack.mitre.org/techniques/T1592/" target="_blank">T1592 — Gather Victim Host Information</a> (Reconnaissance)</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="border-left:5px solid #d97706">
+          <span class="badge" style="background:#d97706">MEDIUM</span>
+          <strong>[F003] Weak Content-Security-Policy: unsafe directives present</strong>
+          <span class="owasp-tag">A05:2021</span>
+        </div>
+        <div class="card-body">
+          <p><strong>URL:</strong> <code>https://niteshg.com.np</code></p>
+          <p><strong>Description:</strong> The Content-Security-Policy contains 'unsafe-inline' or 'unsafe-eval', which significantly reduces CSP effectiveness against XSS attacks.</p>
+          <p><strong>Evidence:</strong> <code class="evidence">Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:</code></p>
+          <p><strong>Recommendation:</strong> Remove 'unsafe-inline' and 'unsafe-eval'. Use nonces or hashes instead.</p>
+          
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="border-left:5px solid #16a34a">
+          <span class="badge" style="background:#16a34a">LOW</span>
+          <strong>[F004] Sensitive Path Exists (Access Restricted): /wp-config.php</strong>
+          <span class="owasp-tag">A05:2021</span>
+        </div>
+        <div class="card-body">
+          <p><strong>URL:</strong> <code>https://niteshg.com.np/wp-config.php</code></p>
+          <p><strong>Description:</strong> WordPress configuration exists at https://niteshg.com.np/wp-config.php but access is restricted (HTTP 403). Confirm it contains no sensitive data and access controls are correct.</p>
+          <p><strong>Evidence:</strong> <code class="evidence">GET https://niteshg.com.np/wp-config.php → HTTP 403 Forbidden</code></p>
+          <p><strong>Recommendation:</strong> Verify /wp-config.php is not accessible and contains no sensitive data.</p>
+          <p><strong>MITRE ATT&amp;CK:</strong> <a href="https://attack.mitre.org/techniques/T1083/" target="_blank">T1083 — File and Directory Discovery</a> (Discovery)</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="border-left:5px solid #2563eb">
+          <span class="badge" style="background:#2563eb">INFORMATIONAL</span>
+          <strong>[F005] Sensitive File Exposed: /robots.txt</strong>
+          <span class="owasp-tag">A05:2021</span>
+        </div>
+        <div class="card-body">
+          <p><strong>URL:</strong> <code>https://niteshg.com.np/robots.txt</code></p>
+          <p><strong>Description:</strong> Robots.txt (may reveal hidden paths) is publicly accessible at https://niteshg.com.np/robots.txt. This may expose credentials, configuration, or application internals.</p>
+          <p><strong>Evidence:</strong> <code class="evidence">GET https://niteshg.com.np/robots.txt → HTTP 200 (1918 bytes) — content validated</code></p>
+          <p><strong>Recommendation:</strong> Remove or restrict access to /robots.txt. Ensure sensitive files are not deployed to production. Configure web server to deny access to these paths.</p>
+          
+        </div>
+      </div>
+  </section>
+
+  <footer>
+    Generated by Web Vulnerability Scanner v1.0 &nbsp;·&nbsp; Authorized testing only
+  </footer>
+</div>
+</body>
+</html>

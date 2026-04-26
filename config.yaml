@@ -1,0 +1,44 @@
+# web-vuln-scanner v2.0.0 — configuration
+# CLI flags always override these values.
+
+scan:
+  timeout: 10        # HTTP request timeout (seconds)
+  delay: 0.0         # Delay between requests — respect rate limits
+  depth: 2           # Crawler depth
+  max_pages: 50      # Maximum pages to crawl
+  threads: 10        # Concurrent request workers
+
+modules:
+  # OWASP Web Application Top 10 (2021)
+  headers: true      # A05:2021 — Security header audit
+  info:    true      # A05:2021 — Information disclosure
+  sqli:    true      # A03:2021 — SQL Injection
+  xss:     true      # A03:2021 — Cross-Site Scripting
+  bac:     true      # A01:2021 — Broken Access Control / IDOR
+  crypto:  true      # A02:2021 — Cryptographic Failures
+  auth:    true      # A07:2021 — Broken Authentication / JWT
+  ssrf:    true      # A10:2021 — Server-Side Request Forgery
+  # OWASP API Security Top 10 (2023)
+  api:     true
+  # OWASP AI / LLM Top 10 (2025)
+  ai:      true
+
+false_positive:
+  enabled: true
+  min_body_diff_bytes: 50
+  reflection_threshold: 0.8
+  error_keywords:
+    - "sql syntax"
+    - "mysql_fetch"
+    - "ora-"
+    - "pg_query"
+    - "sqlite3"
+    - "unclosed quotation"
+
+output:
+  format: "html"
+  directory: "output"
+  verbose: false
+  quiet: false
+
+user_agent: "WebVulnScanner/2.0 (authorized-security-testing)"
