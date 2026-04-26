@@ -1,0 +1,21 @@
+# Broken Authentication probe payloads — OWASP A07:2021
+# Default credentials (username:password format)
+admin:admin
+admin:password
+admin:123456
+admin:
+root:root
+root:toor
+test:test
+guest:guest
+user:user
+demo:demo
+# JWT test values
+eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFkbWluIiwiaWF0IjoxNTE2MjM5MDIyfQ.
+# Common weak tokens
+null
+undefined
+0
+1
+true
+false

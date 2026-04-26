@@ -109,6 +109,10 @@ class SSRFScanner(ScannerBase):
 
     # ── Internal helpers ──────────────────────────────────────────────────
 
+    @property
+    def _probes(self) -> list:
+        return self.custom_payloads if self.custom_payloads else self.SSRF_PROBES
+
     def _probe_param(self, url: str, param: str, original_value: str) -> None:
         """
         Replace a parameter value with SSRF probe URLs and check the response.
@@ -124,7 +128,7 @@ class SSRFScanner(ScannerBase):
         except requests.RequestException:
             return
 
-        for probe in self.SSRF_PROBES:
+        for probe in self._probes:
             qs_dict[param] = [probe]
             test_url = parsed._replace(
                 query=urlencode(qs_dict, doseq=True)

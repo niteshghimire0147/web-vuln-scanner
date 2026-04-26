@@ -8,6 +8,7 @@ Tests for:
 - Missing authorization headers on sensitive endpoints
 - HTTP method override abuse (VERB tampering)
 """
+import hashlib
 import re
 import time
 from typing import List
@@ -15,6 +16,10 @@ from urllib.parse import urlparse, urlencode, parse_qs, urljoin
 
 import requests
 from .scanner_base import ScannerBase
+
+
+def _body_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
 
 
 class BrokenAccessControlScanner(ScannerBase):
@@ -122,11 +127,42 @@ class BrokenAccessControlScanner(ScannerBase):
 
         return self.findings
 
+    # ── Baseline fingerprinting (SPA / catch-all 404 detection) ──────────
+
+    def _baseline_fingerprint(self) -> tuple:
+        """
+        Fetch a URL that is guaranteed not to exist and record its body hash
+        and size. SPAs return HTTP 200 with the same index.html for every
+        unknown route — this fingerprint lets us detect and skip those.
+        """
+        probe = f"{self.target.rstrip('/')}/this-path-does-not-exist-ac2f9b7e"
+        try:
+            resp = self.session.get(probe, timeout=self.timeout, allow_redirects=True)
+            return _body_hash(resp.text), len(resp.text)
+        except requests.RequestException:
+            return "", 0
+
+    def _matches_baseline(self, body: str, baseline_hash: str, baseline_size: int) -> bool:
+        """Return True when the response is effectively the same as the baseline 404."""
+        if not baseline_hash:
+            return False
+        if _body_hash(body) == baseline_hash:
+            return True
+        # Catch SPA pages that differ only by a timestamp/nonce (within 2% of size)
+        if baseline_size > 0 and abs(len(body) - baseline_size) / baseline_size < 0.02:
+            return True
+        return False
+
     # ── Forced Browsing ───────────────────────────────────────────────────
 
     def _check_forced_browsing(self) -> None:
         """Probe well-known sensitive paths for unexpected 200 responses."""
         self._log("Forced browsing: probing sensitive admin/config paths")
+
+        # Fingerprint the site's 404/catch-all page first so we can skip
+        # SPAs that return HTTP 200 for every unknown route.
+        baseline_hash, baseline_size = self._baseline_fingerprint()
+
         for path in self.ADMIN_PATHS:
             url = urljoin(self.target.rstrip("/") + "/", path.lstrip("/"))
             try:
@@ -136,41 +172,48 @@ class BrokenAccessControlScanner(ScannerBase):
             except requests.RequestException:
                 continue
 
-            if resp.status_code == 200:
-                # Filter out generic 200-for-everything pages by checking
-                # that content length is non-trivial
-                if len(resp.content) < 50:
-                    continue
-                # Extra: check if it looks like an auth/error page
-                body_lower = resp.text.lower()
-                if any(k in body_lower for k in ("login", "sign in",
-                                                  "unauthorized", "403")):
-                    severity = "MEDIUM"
-                    title    = f"Restricted Path Accessible (Login Required): {path}"
-                else:
-                    severity = "HIGH"
-                    title    = f"Sensitive Path Exposed (No Auth): {path}"
+            if resp.status_code != 200:
+                continue
 
-                self.findings.append(self._finding(
-                    title=title,
-                    severity=severity,
-                    description=(
-                        f"The path '{path}' returned HTTP 200 without a redirect "
-                        f"to authentication. Sensitive administrative interfaces, "
-                        f"configuration files, or debug endpoints should not be "
-                        f"reachable by unauthenticated users."
-                    ),
-                    evidence=f"HTTP {resp.status_code} — {len(resp.content)} bytes",
-                    recommendation=(
-                        "Restrict access using server-level authentication "
-                        "(e.g., HTTP Basic Auth, IP allowlisting, or a dedicated "
-                        "auth middleware). Remove debug/test endpoints from "
-                        "production deployments entirely."
-                    ),
-                    owasp_id="A01:2021",
-                    cwe_id="CWE-284",
-                    url=url,
-                ))
+            # Ignore trivially small bodies (likely empty 200s)
+            if len(resp.content) < 100:
+                continue
+
+            # Skip responses that are identical (or near-identical) to the
+            # baseline 404 — this eliminates SPA catch-all false positives.
+            if self._matches_baseline(resp.text, baseline_hash, baseline_size):
+                self._log(f"Skipped (matches SPA baseline): {path}")
+                continue
+
+            body_lower = resp.text.lower()
+            if any(k in body_lower for k in ("login", "sign in",
+                                              "unauthorized", "403")):
+                severity = "MEDIUM"
+                title    = f"Restricted Path Accessible (Login Required): {path}"
+            else:
+                severity = "HIGH"
+                title    = f"Sensitive Path Exposed (No Auth): {path}"
+
+            self.findings.append(self._finding(
+                title=title,
+                severity=severity,
+                description=(
+                    f"The path '{path}' returned HTTP 200 without a redirect "
+                    f"to authentication. Sensitive administrative interfaces, "
+                    f"configuration files, or debug endpoints should not be "
+                    f"reachable by unauthenticated users."
+                ),
+                evidence=f"HTTP {resp.status_code} — {len(resp.content)} bytes",
+                recommendation=(
+                    "Restrict access using server-level authentication "
+                    "(e.g., HTTP Basic Auth, IP allowlisting, or a dedicated "
+                    "auth middleware). Remove debug/test endpoints from "
+                    "production deployments entirely."
+                ),
+                owasp_id="A01:2021",
+                cwe_id="CWE-284",
+                url=url,
+            ))
 
     # ── IDOR ──────────────────────────────────────────────────────────────
 

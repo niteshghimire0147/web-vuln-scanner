@@ -22,7 +22,7 @@
 | 🧠 | Attack Chain Correlation Engine |
 | 📊 | CVSS v3.1 Severity Scoring — per finding, automatically applied |
 | ⚡ | Multi-threaded Scanning Engine — ThreadPoolExecutor |
-| 🧾 | HTML / JSON / Markdown Reporting |
+| 🧾 | HTML Report (always) + optional JSON / Markdown output |
 | 🔐 | CI/CD Security Gate Support — configurable exit code threshold |
 
 ---
@@ -39,6 +39,7 @@
 - [Usage](#usage)
 - [CI/CD Integration](#cicd-integration)
 - [Scanner Modules](#scanner-modules)
+- [Payload System](#payload-system)
 - [False-Positive Filtering](#false-positive-filtering)
 - [Report Output](#report-output)
 - [Testing](#-testing)
@@ -76,20 +77,81 @@ Vulnerability correlation transforms isolated findings into actionable threat mo
 
 ## 🔥 Attack Chain Intelligence
 
-Traditional scanners report vulnerabilities in isolation. This framework correlates findings into **multi-step attack chains** that reflect how real adversaries operate:
+Traditional scanners report vulnerabilities in isolation. This framework correlates findings into **multi-step attack chains** that reflect how real adversaries operate.
+
+### Attack Chain Flow Diagram
 
 ```
-SQL Injection ──────────────→ Authentication Bypass
-XSS ────────────────────────→ Session Hijacking → Account Takeover
-SSRF ───────────────────────→ Cloud Metadata Access → Credential Leakage
-API Misconfiguration ───────→ Unauthorized Data Exfiltration
-Prompt Injection ───────────→ Sensitive Data Leakage via LLM
-Info Disclosure ────────────→ Targeted Injection → Privilege Escalation
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ADVERSARY ENTRY POINTS                               │
+├──────────────┬──────────────────┬──────────────────┬────────────────────────┤
+│  Info Leak   │   SQL Injection  │   XSS / CSRF     │   API / SSRF           │
+│  A05:2021    │   A03:2021       │   A03:2021        │   A10:2021             │
+└──────┬───────┴────────┬─────────┴────────┬──────────┴──────────┬────────────┘
+       │                │                  │                     │
+       ▼                ▼                  ▼                     ▼
+┌──────────────┐ ┌─────────────┐ ┌────────────────┐ ┌───────────────────────┐
+│ .git exposed │ │ DB dump /   │ │ Session cookie │ │ Cloud metadata fetch  │
+│ .env leaked  │ │ auth bypass │ │ theft via JS   │ │ 169.254.169.254       │
+│ stack trace  │ │ UNION SELECT│ │ DOM injection  │ │ Internal port scan    │
+└──────┬───────┘ └──────┬──────┘ └───────┬────────┘ └──────────┬────────────┘
+       │                │                │                      │
+       └────────┬───────┘                └──────────┬───────────┘
+                │                                   │
+                ▼                                   ▼
+     ┌──────────────────────┐           ┌───────────────────────┐
+     │  CREDENTIAL ACCESS   │           │   SESSION HIJACKING   │
+     │  T1110 · A07:2021    │           │   T1539 · A07:2021    │
+     │  Default creds       │           │   Cookie theft        │
+     │  JWT alg confusion   │           │   Token replay        │
+     └──────────┬───────────┘           └──────────┬────────────┘
+                │                                   │
+                └──────────────┬────────────────────┘
+                               │
+                               ▼
+                  ┌────────────────────────┐
+                  │   PRIVILEGE ESCALATION │
+                  │   T1078 · A01:2021     │
+                  │   IDOR · Forced Browse │
+                  │   Verb Tampering       │
+                  └────────────┬───────────┘
+                               │
+                ┌──────────────┼──────────────┐
+                ▼              ▼              ▼
+     ┌──────────────┐ ┌──────────────┐ ┌────────────────┐
+     │  DATA THEFT  │ │   LATERAL    │ │  PERSISTENCE   │
+     │  T1041       │ │   MOVEMENT   │ │  T1505         │
+     │  PII · Keys  │ │  API abuse   │ │  Backdoor user │
+     │  DB records  │ │  BOLA chain  │ │  Token plant   │
+     └──────────────┘ └──────────────┘ └────────────────┘
 ```
 
-**Adversary movement modeled:**
+### Chain Examples — Modeled by the Engine
+
 ```
-Exploit → Escalate → Exfiltrate → Persist
+[INFO DISCLOSURE]──────► [BROKEN AUTH]──────────────► [ACCOUNT TAKEOVER]
+  .env exposes JWT          Weak secret cracks token      Full admin access
+
+[SQL INJECTION]────────► [AUTH BYPASS]──────────────► [DATA EXFILTRATION]
+  UNION SELECT leaks        Password hash exposed          DB dump via API
+
+[XSS]──────────────────► [SESSION HIJACK]────────────► [PRIVILEGE ESCALATION]
+  Payload reflected         Cookie stolen via JS           IDOR to admin panel
+
+[SSRF]─────────────────► [CLOUD METADATA]────────────► [CREDENTIAL LEAKAGE]
+  URL param injected        AWS IMDSv1 reached             IAM keys extracted
+
+[API MISCONFIGURATION]─► [BOLA]──────────────────────► [UNAUTHORIZED EXFIL]
+  No rate limit / auth      Object ID enumerated           All user records dumped
+
+[PROMPT INJECTION]─────► [LLM OUTPUT ABUSE]──────────► [DATA LEAKAGE via AI]
+  Instruction override      Unsafe content rendered        Sensitive data in reply
+```
+
+**MITRE ATT&CK adversary movement modeled:**
+```
+Reconnaissance ──► Initial Access ──► Execution ──► Privilege Escalation ──► Exfiltration
+   T1592               T1190            T1059             T1078                  T1041
 ```
 
 Each chain is mapped to MITRE ATT&CK tactics and OWASP categories. The `core/attack_chain.py` engine evaluates all findings against a rule registry at scan completion — a new correlation rule requires only a single `ChainRule` entry, no code changes.
@@ -327,13 +389,18 @@ web-vuln-scanner/
 │   └── markdown_reporter.py      Human-readable Markdown format
 │
 ├── utils/                        Shared infrastructure
-│   ├── logger.py                 Structured, color-coded logging
+│   ├── logger.py                 Structured, color-coded logging (all output to stderr)
 │   ├── config.py                 YAML configuration loader
-│   └── mitre.py                  MITRE ATT&CK technique mapping database
+│   ├── mitre.py                  MITRE ATT&CK technique mapping database
+│   └── payload_loader.py         OWASP-mapped payload file resolver (-w support)
 │
-├── data/                         Payload and wordlist assets
-│   ├── payloads.txt
-│   └── wordlist.txt
+├── data/                         OWASP-mapped payload files (auto-loaded per module)
+│   ├── sqli.txt                  SQL injection payloads (error-based, time-based, union)
+│   ├── xss.txt                   XSS payloads with reflection marker
+│   ├── ssrf.txt                  SSRF probe targets (loopback + cloud metadata)
+│   ├── bac.txt                   Forced browsing and IDOR probe paths
+│   ├── auth.txt                  Default credentials and auth bypass payloads
+│   └── paths.txt                 Information disclosure path list
 │
 ├── tests/                        pytest test suite with HTTP mocking
 ├── examples/                     Docker Compose lab environment (DVWA)
@@ -390,8 +457,10 @@ Options:
   --cookie          Session cookie string ("PHPSESSID=abc; security=low")
   --header          Additional HTTP header — repeatable ("Name: Value")
   --proxy           HTTP/HTTPS proxy URL ("http://127.0.0.1:8080")
-  -o, --output      Output file base name
-  --format          Output format: html / json / text / all (default: html)
+  -o, --output      Report base name saved in output/ (default: scan_<host>_<ts>)
+  --json            Also save a JSON report  (output/<name>.json)
+  --markdown        Also save a Markdown report (output/<name>.md)
+  -w, --wordlist    Custom payload: file path, folder, or literal string
   --fail-on         Exit code 1 threshold: critical / high / medium / none (default: high)
   -v, --verbose     Enable verbose progress output
 
@@ -403,20 +472,29 @@ Exit codes:
 ### Examples
 
 ```bash
-# Full scan, all modules, all output formats
-python main.py -u http://testapp.local -o report --format all -v
+# Full scan — HTML report auto-saved to output/scan_<host>_<ts>.html
+python main.py -u http://testapp.local -v
 
-# Injection-focused assessment with authenticated session
+# Full scan with named report + all formats
+python main.py -u http://testapp.local -o report --json --markdown -v
+
+# Injection-focused with authenticated session
 python main.py -u http://app.com --modules sqli,xss,bac --cookie "session=abc123"
+
+# Custom payload file override
+python main.py -u http://app.com --modules sqli,xss -w custom/my_payloads.txt
+
+# Custom payloads from a folder (loads all .txt files inside)
+python main.py -u http://app.com --modules sqli -w custom/sqli-payloads/
 
 # Rate-limited deep crawl
 python main.py -u http://app.com --depth 3 --max-pages 200 --delay 0.5
 
 # API and AI security assessment
-python main.py -u http://api.target.com --modules api,ai,auth,crypto --format all
+python main.py -u http://api.target.com --modules api,ai,auth,crypto --json
 
 # Intercept traffic through Burp Suite
-python main.py -u http://target.com --proxy http://127.0.0.1:8080 --format all -v
+python main.py -u http://target.com --proxy http://127.0.0.1:8080 -v
 ```
 
 ---
@@ -436,16 +514,16 @@ The scanner is designed as a security gate in automated pipelines. All human-rea
 
 ```bash
 # Audit-only — always exits 0, findings still reported (never blocks pipeline)
-python main.py -u https://staging.app.com --format json --fail-on none
+python main.py -u https://staging.app.com --json --fail-on none
 
 # Block only on CRITICAL findings
-python main.py -u https://staging.app.com --format json --fail-on critical
+python main.py -u https://staging.app.com --json --fail-on critical
 
 # Block on HIGH or CRITICAL (default)
-python main.py -u https://staging.app.com --format json --fail-on high
+python main.py -u https://staging.app.com --json --fail-on high
 
 # Block on MEDIUM and above
-python main.py -u https://staging.app.com --format json --fail-on medium
+python main.py -u https://staging.app.com --json --fail-on medium
 ```
 
 ### Supported CI Platforms
@@ -462,7 +540,7 @@ python main.py -u https://staging.app.com --format json --fail-on medium
 ```yaml
 - name: Security Scan
   id: scan
-  run: python main.py --url ${{ vars.STAGING_URL }} --format json --fail-on critical
+  run: python main.py --url ${{ vars.STAGING_URL }} --json --fail-on critical
   continue-on-error: true
 
 - name: Upload Report
@@ -495,9 +573,48 @@ python main.py -u https://staging.app.com --format json --fail-on medium
 
 ---
 
+## Payload System
+
+Each injection module automatically loads payloads from a matching file in `data/` — no configuration required.
+
+| Module | Default file | Contents |
+|---|---|---|
+| `sqli` | `data/sqli.txt` | Error-based, time-based blind, union-based payloads |
+| `xss` | `data/xss.txt` | Reflected XSS payloads with embedded reflection marker |
+| `ssrf` | `data/ssrf.txt` | Loopback, IPv6, cloud metadata probe URLs |
+| `bac` | `data/bac.txt` | Admin panel paths and IDOR parameter probes |
+| `auth` | `data/auth.txt` | Default credentials and auth bypass payloads |
+| `info` | `data/paths.txt` | Sensitive file and debug endpoint paths |
+
+### Custom Payloads (`-w`)
+
+The `-w` / `--wordlist` flag overrides the default `data/` files for all active injection modules:
+
+```bash
+# Single literal payload (no file needed)
+python main.py -u http://target.com --modules sqli -w "' OR 1=1--"
+
+# Single payload file (replaces data/sqli.txt and data/xss.txt for this run)
+python main.py -u http://target.com --modules sqli,xss -w custom/my_payloads.txt
+
+# Folder — loads every .txt file inside dynamically
+python main.py -u http://target.com --modules sqli -w custom/sqli-payloads/
+```
+
+**Priority:** `-w` always overrides `data/` defaults. When no `-w` is given and no `data/<module>.txt` exists, the module falls back to its built-in hardcoded payload list — nothing breaks.
+
+---
+
 ## False-Positive Filtering
 
-The post-scan filter (`modules/false_positive_filter.py`) applies technique-specific validation before findings are committed to the report:
+The scanner applies two-layer false-positive reduction before finalizing findings:
+
+**Pre-scan baseline fingerprinting (per-module)**
+
+- **Broken Access Control**: Before probing any admin/sensitive paths, the scanner fetches a guaranteed-non-existent URL and records its body hash and size. Any path that returns a response identical or near-identical (within 2% body size) to that baseline is silently discarded. This eliminates the most common false positive on SPAs and Next.js / React apps that return HTTP 200 for every route — the client-side router shows a 404 UI, but the server always responds 200.
+- **Info Disclosure**: Same baseline fingerprinting — sensitive paths that return the SPA's catch-all `index.html` are suppressed. Content-type validators further confirm that flagged files actually contain the expected content (e.g., `.env` must match `KEY=VALUE` patterns, `.git/HEAD` must match `ref: refs/heads/`).
+
+**Post-scan signature validation** (`modules/false_positive_filter.py`)
 
 - **SQL Injection**: Requires a recognizable database error signature in the response body. HTTP 500 responses not containing DB-specific patterns are suppressed.
 - **XSS**: Validates that the injected payload appears *unencoded* in the response. HTML-entity-encoded reflections are classified as non-exploitable and excluded.
@@ -515,13 +632,41 @@ false_positive:
 
 ## Report Output
 
-Reports are written to `output/` with timestamped filenames.
+> **Screenshot placeholders** — add your actual screenshots to `docs/images/` and they will render here on GitHub.
 
-| Format | Primary Use |
-|---|---|
-| HTML | Client deliverables, visual severity dashboards, interactive collapsible findings |
-| JSON | SIEM ingestion, CI/CD pipeline integration, custom tooling and automation |
-| Markdown | Documentation, ticket creation, peer review |
+### HTML Dashboard
+
+![Scanner Dashboard](docs/images/dashboard.png)
+*HTML report — severity breakdown, collapsible findings, CVSS scores, MITRE ATT&CK context*
+
+### Report Output Example
+
+![Report Output](docs/images/output.png)
+*Sample scan report showing findings grouped by severity with evidence and remediation guidance*
+
+---
+
+All reports are saved to the `output/` folder automatically. **HTML is always generated.** JSON and Markdown are optional extras.
+
+```bash
+# Default — HTML only, auto-named
+python main.py -u http://target.com
+# output/scan_target.com_20260426_153000.html
+
+# Named report
+python main.py -u http://target.com -o myreport
+# output/myreport.html
+
+# Named report + optional formats
+python main.py -u http://target.com -o myreport --json --markdown
+# output/myreport.html  +  output/myreport.json  +  output/myreport.md
+```
+
+| Format | Flag | Primary Use |
+|---|---|---|
+| HTML | always on | Client deliverables, visual severity dashboard, collapsible findings |
+| JSON | `--json` | SIEM ingestion, CI/CD pipeline integration, custom automation |
+| Markdown | `--markdown` | Documentation, ticket creation, peer review |
 
 ### Sample Terminal Output
 
@@ -590,11 +735,16 @@ Use intentionally vulnerable applications for authorized lab testing:
 # DVWA (Damn Vulnerable Web Application) — low security level
 python main.py -u http://localhost:8080 \
   --cookie "security=low; PHPSESSID=test" \
-  --format all -v
+  -v
+
+# With all report formats
+python main.py -u http://localhost:8080 \
+  --cookie "security=low; PHPSESSID=test" \
+  --json --markdown -v
 
 # Full lab environment via Docker Compose (see examples/)
 docker-compose -f examples/docker-compose.yml up -d
-python main.py -u http://localhost:8080 --format all -v
+python main.py -u http://localhost:8080 --json --markdown -v
 ```
 
 Recommended lab targets: [DVWA](http://dvwa.co.uk/), [WebGoat](https://owasp.org/www-project-webgoat/), [Juice Shop](https://owasp.org/www-project-juice-shop/)

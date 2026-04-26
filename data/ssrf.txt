@@ -1,0 +1,16 @@
+# SSRF probe targets — OWASP A10:2021
+# Loopback
+http://127.0.0.1/
+http://127.0.0.1:22/
+http://127.0.0.1:8080/
+http://localhost/
+http://[::1]/
+http://0.0.0.0/
+# Cloud metadata (read-only, industry-standard SSRF test targets)
+http://169.254.169.254/latest/meta-data/
+http://169.254.169.254/computeMetadata/v1/
+http://169.254.169.254/metadata/instance
+http://metadata.google.internal/computeMetadata/v1/
+# Additional internal ranges
+http://10.0.0.1/
+http://192.168.1.1/

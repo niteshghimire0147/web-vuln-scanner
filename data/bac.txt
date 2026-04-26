@@ -1,0 +1,27 @@
+# Broken Access Control probe paths — OWASP A01:2021
+# Admin panels
+/admin
+/admin/
+/administrator
+/admin/dashboard
+/admin/users
+/admin/config
+/admin/settings
+/admin/panel
+/manage
+/management
+/dashboard
+/control
+/controlpanel
+# User/object parameter tampering probes (appended to existing paths)
+?id=1
+?user_id=1
+?uid=1
+?account=1
+?profile=1
+?order=1
+# API object endpoints
+/api/v1/admin
+/api/v1/users
+/api/v2/admin
+/api/admin

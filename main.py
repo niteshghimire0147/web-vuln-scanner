@@ -36,9 +36,10 @@ from modules.ssrf_scanner           import SSRFScanner
 from modules.broken_auth_scanner    import BrokenAuthScanner
 from modules.api_scanner            import APIScanner
 from modules.ai_scanner             import AIScanner
-from utils.logger  import get_logger, configure_root
-from utils.config  import load_config
-from utils.mitre   import get_dict as mitre_get
+from utils.logger          import get_logger, configure_root
+from utils.config          import load_config
+from utils.mitre           import get_dict as mitre_get
+from utils.payload_loader  import resolve_payloads
 
 log = get_logger(__name__)
 
@@ -203,6 +204,12 @@ def run_scan(args: argparse.Namespace) -> int:
         delay=args.delay,
     )
 
+    # Resolve OWASP-mapped (or -w override) payloads for injection modules
+    w = getattr(args, "wordlist", None)
+    _sqli_payloads = resolve_payloads(w, "sqli")
+    _xss_payloads  = resolve_payloads(w, "xss")
+    _ssrf_payloads = resolve_payloads(w, "ssrf")
+
     if "headers" in args.modules:
         phase += 1
         _phase(phase, total_phases, MODULE_LABELS["headers"])
@@ -246,7 +253,7 @@ def run_scan(args: argparse.Namespace) -> int:
     if "ssrf" in args.modules:
         phase += 1
         _phase(phase, total_phases, MODULE_LABELS["ssrf"])
-        scanner = SSRFScanner(**common_opts)
+        scanner = SSRFScanner(**common_opts, custom_payloads=_ssrf_payloads)
         findings = scanner.scan()
         all_findings.extend(findings)
         _phase_result(len(findings))
@@ -293,7 +300,7 @@ def run_scan(args: argparse.Namespace) -> int:
     if "sqli" in args.modules:
         phase += 1
         _phase(phase, total_phases, MODULE_LABELS["sqli"])
-        scanner = SQLiScanner(**common_opts)
+        scanner = SQLiScanner(**common_opts, custom_payloads=_sqli_payloads)
         scanner.scan_forms(forms)
         scanner.scan_url_params(url_params)
         all_findings.extend(scanner.findings)
@@ -302,7 +309,7 @@ def run_scan(args: argparse.Namespace) -> int:
     if "xss" in args.modules:
         phase += 1
         _phase(phase, total_phases, MODULE_LABELS["xss"])
-        scanner = XSSScanner(**common_opts)
+        scanner = XSSScanner(**common_opts, custom_payloads=_xss_payloads)
         scanner.scan_forms(forms)
         scanner.scan_url_params(url_params)
         all_findings.extend(scanner.findings)
@@ -314,7 +321,7 @@ def run_scan(args: argparse.Namespace) -> int:
         all_findings.extend(bac.findings)
 
     if "ssrf" in args.modules and url_params:
-        ssrf = SSRFScanner(**common_opts)
+        ssrf = SSRFScanner(**common_opts, custom_payloads=_ssrf_payloads)
         ssrf.scan_url_params(url_params)
         all_findings.extend(ssrf.findings)
 
@@ -364,10 +371,28 @@ def _default_output_base(target_url: str) -> str:
     return os.path.join(out_dir, f"scan_{hostname}_{ts}")
 
 
+def _resolve_output_base(raw: str) -> str:
+    """
+    Resolve the -o value to an absolute base path inside output/.
+
+    Rules:
+    - Absolute path            -> use as-is (advanced override)
+    - Path with a directory    -> use as-is (user chose their own folder)
+    - Bare filename / no value -> always land in output/<name>
+    """
+    from pathlib import Path
+    p = Path(raw)
+    if p.is_absolute() or len(p.parts) > 1:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return str(p)
+    out_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "output"
+    out_dir.mkdir(exist_ok=True)
+    return str(out_dir / p)
+
+
 def _write_output(findings: list, args: argparse.Namespace) -> None:
     from reporter import JsonReporter, HtmlReporter, MarkdownReporter
-    fmt  = args.format
-    base = args.output if args.output else _default_output_base(args.url)
+    base = _resolve_output_base(args.output) if args.output else _default_output_base(args.url)
     data = {
         "target":          args.url,
         "modules":         args.modules,
@@ -376,13 +401,14 @@ def _write_output(findings: list, args: argparse.Namespace) -> None:
         "total_findings":  len(findings),
         "findings":        findings,
     }
-    if fmt in ("json", "all"):
+    # HTML is always generated
+    path = HtmlReporter().save(data, f"{base}.html")
+    log.info("%s[+] HTML  : %s%s", C_GREEN, path, C_RESET)
+    # Optional extras
+    if getattr(args, "json", False):
         path = JsonReporter().save(data, f"{base}.json")
         log.info("%s[+] JSON  : %s%s", C_GREEN, path, C_RESET)
-    if fmt in ("html", "all"):
-        path = HtmlReporter().save(data, f"{base}.html")
-        log.info("%s[+] HTML  : %s%s", C_GREEN, path, C_RESET)
-    if fmt in ("text", "markdown", "all"):
+    if getattr(args, "markdown", False):
         path = MarkdownReporter().save(data, f"{base}.md")
         log.info("%s[+] MD    : %s%s", C_GREEN, path, C_RESET)
 
@@ -409,11 +435,13 @@ Modules:
   ai       AI / LLM Top 10 (2025)
 
 Examples:
-  python main.py --url http://localhost:8080 -v --format html
+  python main.py --url http://localhost:8080                              # -> output/scan_localhost_<ts>.html
+  python main.py --url http://target.com -o myreport                     # -> output/myreport.html
+  python main.py --url http://target.com -o myreport --json --markdown   # -> .html + .json + .md
   python main.py --url http://dvwa.local --cookie "security=low; PHPSESSID=abc"
   python main.py --url http://api.target.com --modules api,ai,ssrf
   python main.py --url http://target.com --modules all --depth 3 --max-pages 100
-  python main.py --url http://target.com --proxy http://127.0.0.1:8080 --format all
+  python main.py --url http://target.com --proxy http://127.0.0.1:8080
         """
     )
     parser.add_argument("--url", "-u", required=True,
@@ -434,10 +462,27 @@ Examples:
                         help="Extra HTTP header (repeatable)")
     parser.add_argument("--proxy",
                         help="HTTP/HTTPS proxy URL (e.g. http://127.0.0.1:8080)")
-    parser.add_argument("-o", "--output",
-                        help="Output base path (default: output/scan_<host>_<ts>)")
-    parser.add_argument("--format", choices=["html", "json", "text", "all"],
-                        default="html", help="Output format (default: html)")
+    parser.add_argument(
+        "-o", "--output",
+        metavar="NAME",
+        help=(
+            "Report base name, saved inside output/ (default: scan_<host>_<ts>). "
+            "Use a bare name like 'myreport' -> output/myreport.html. "
+            "Absolute or relative paths with directories are used as-is."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Also save a JSON report alongside the HTML (output/<name>.json).",
+    )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        default=False,
+        help="Also save a Markdown report alongside the HTML (output/<name>.md).",
+    )
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Verbose output")
     parser.add_argument("--fail-on",
@@ -450,6 +495,17 @@ Examples:
                             "audit-only CI steps where findings are reported "
                             "but the pipeline must not be blocked."
                         ))
+    parser.add_argument(
+        "-w", "--wordlist",
+        default=None,
+        metavar="PATH_OR_STRING",
+        help=(
+            "Custom payload source. Accepts: a .txt file path, a directory "
+            "(loads all *.txt inside), or a literal payload string. "
+            "Overrides OWASP-mapped defaults in data/ for all active modules. "
+            "Omit to use built-in data/<module>.txt files automatically."
+        ),
+    )
     parser.add_argument("--version", action="version",
                         version=f"%(prog)s {VERSION}")
     return parser

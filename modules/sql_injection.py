@@ -96,6 +96,15 @@ class SQLiScanner(ScannerBase):
             self.findings.extend(findings)
         return self.findings
 
+    @property
+    def _error_payloads(self) -> List[str]:
+        return self.custom_payloads if self.custom_payloads else self.ERROR_PAYLOADS
+
+    @property
+    def _time_payloads(self) -> List[str]:
+        # Skip time-based probes when custom payloads are supplied
+        return [] if self.custom_payloads else self.TIME_PAYLOADS
+
     def _test_form_post(self, form: dict) -> List[dict]:
         """Test a POST form for SQLi."""
         results = []
@@ -103,7 +112,7 @@ class SQLiScanner(ScannerBase):
         if not inputs:
             return results
 
-        for payload in self.ERROR_PAYLOADS:
+        for payload in self._error_payloads:
             data = {inp["name"]: payload for inp in inputs}
             # Keep non-target fields with original values
             for inp in inputs:
@@ -140,7 +149,7 @@ class SQLiScanner(ScannerBase):
                 continue
 
         # Time-based test
-        for payload in self.TIME_PAYLOADS:
+        for payload in self._time_payloads:
             data = {inp["name"]: payload for inp in inputs}
             try:
                 start = time.time()
@@ -195,7 +204,7 @@ class SQLiScanner(ScannerBase):
         if not inputs:
             return results
 
-        for payload in self.ERROR_PAYLOADS[:5]:  # Fewer payloads for GET
+        for payload in self._error_payloads[:5]:  # Fewer payloads for GET
             params = {inp["name"]: payload for inp in inputs}
             try:
                 resp = self.session.get(
@@ -228,7 +237,7 @@ class SQLiScanner(ScannerBase):
         parsed = urlparse(url)
         params = parse_qs(parsed.query, keep_blank_values=True)
 
-        for payload in self.ERROR_PAYLOADS[:6]:
+        for payload in self._error_payloads[:6]:
             test_params = dict(params)
             test_params[param] = [payload]
             try:

@@ -38,10 +38,14 @@ class XSSScanner(ScannerBase):
     def scan(self) -> List[dict]:
         return self.findings
 
+    @property
+    def _payloads(self) -> list:
+        return self.custom_payloads if self.custom_payloads else XSS_PAYLOADS
+
     def scan_forms(self, forms: List[dict]) -> List[dict]:
         """Test all discovered forms for reflected XSS."""
         for form in forms:
-            for payload in XSS_PAYLOADS[:4]:  # Test first 4 payloads per form
+            for payload in self._payloads[:4]:  # Test first 4 payloads per form
                 result = self._test_form(form, payload)
                 if result:
                     self.findings.append(result)
@@ -51,7 +55,7 @@ class XSSScanner(ScannerBase):
     def scan_url_params(self, url_params: List[dict]) -> List[dict]:
         """Test URL query parameters for reflected XSS."""
         for param_info in url_params:
-            for payload in XSS_PAYLOADS[:3]:
+            for payload in self._payloads[:3]:
                 result = self._test_url_param(param_info, payload)
                 if result:
                     self.findings.append(result)

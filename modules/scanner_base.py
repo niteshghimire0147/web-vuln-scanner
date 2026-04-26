@@ -23,6 +23,7 @@ class ScannerBase(ABC):
         verbose: bool = False,
         timeout: int = 10,
         delay: float = 0.0,
+        custom_payloads: Optional[List[str]] = None,
     ):
         """
         Args:
@@ -31,12 +32,15 @@ class ScannerBase(ABC):
             verbose: If True, print progress to stdout.
             timeout: HTTP request timeout in seconds.
             delay: Seconds to sleep between requests (rate limiting).
+            custom_payloads: Override payload list from -w / data/<module>.txt.
+                             Empty list means "no override — use module defaults."
         """
         self.session = session
         self.target = target_url.rstrip("/")
         self.verbose = verbose
         self.timeout = timeout
         self.delay = delay
+        self.custom_payloads: List[str] = custom_payloads or []
         self.findings: List[dict] = []
 
     @abstractmethod
