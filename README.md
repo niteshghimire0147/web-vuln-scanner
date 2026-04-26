@@ -1,410 +1,674 @@
-<<<<<<< HEAD
-# 🛡️ WebVulnScanner
+# 🛡️ Web Vulnerability Scanner v2.0.0
 
-> **A production-grade, modular web application vulnerability scanner that simulates real-world penetration testing workflows — covering OWASP Web Top 10 (2021), OWASP API Security Top 10 (2023), and OWASP AI/LLM Top 10 (2025).**
+> **A modular, CI-ready Web + API + AI Security Testing Framework built for modern penetration testing and DevSecOps pipelines.**
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![OWASP](https://img.shields.io/badge/OWASP-Top%2010-red)](https://owasp.org)
-[![CVSS](https://img.shields.io/badge/CVSS-v3.1-orange)](https://www.first.org/cvss/)
+[![CI](https://github.com/niteshghimire0147/web-vuln-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/niteshghimire0147/web-vuln-scanner/actions)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)](https://python.org)
+[![OWASP](https://img.shields.io/badge/OWASP-Top%2010%20%7C%20API%20%7C%20AI-red)](https://owasp.org)
+[![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK%20Mapped-orange)](https://attack.mitre.org)
+[![Tests](https://img.shields.io/badge/Tests-65%2F65%20Passing-brightgreen)]()
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Authorized Use Only](https://img.shields.io/badge/⚠️%20Authorized-Testing%20Only-yellow)]()
+[![Authorized Use Only](https://img.shields.io/badge/Use-Authorized%20Testing%20Only-yellow)]()
 
 ---
 
-## 📋 Table of Contents
+## ⚡ Key Capabilities
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
+| | Capability |
+|---|---|
+| 🔍 | Web Vulnerability Scanning — OWASP Top 10 (2021) |
+| 🌐 | API Security Testing — OWASP API Top 10 (2023) |
+| 🤖 | AI / LLM Security Testing — OWASP AI Top 10 (2025) |
+| 🧠 | Attack Chain Correlation Engine |
+| 📊 | CVSS v3.1 Severity Scoring — per finding, automatically applied |
+| ⚡ | Multi-threaded Scanning Engine — ThreadPoolExecutor |
+| 🧾 | HTML / JSON / Markdown Reporting |
+| 🔐 | CI/CD Security Gate Support — configurable exit code threshold |
+
+---
+
+## Table of Contents
+
+- [Why This Project Matters](#why-this-project-matters)
+- [Attack Chain Intelligence](#-attack-chain-intelligence)
+- [Security Coverage Matrix](#security-coverage-matrix)
+- [MITRE ATT&CK Mapping](#mitre-attck-mapping)
+- [Security Methodology](#security-methodology)
+- [Architecture Overview](#architecture-overview)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Modules](#modules)
-- [CVSS v3.1 Scoring](#cvss-v31-scoring)
-- [Attack Chain Correlation](#attack-chain-correlation)
+- [CI/CD Integration](#cicd-integration)
+- [Scanner Modules](#scanner-modules)
+- [False-Positive Filtering](#false-positive-filtering)
 - [Report Output](#report-output)
-- [Sample Output](#sample-output)
-- [Future Improvements](#future-improvements)
+- [Testing](#-testing)
+- [Safe Testing Environment](#safe-testing-environment)
+- [Tech Stack](#tech-stack)
+- [Known Limitations](#known-limitations)
+- [Roadmap](#roadmap)
+- [Key Highlights](#-key-highlights)
 - [Disclaimer](#disclaimer)
 
 ---
 
-## Overview
+## Why This Project Matters
 
-WebVulnScanner is a Python-based penetration testing platform built for security professionals and researchers. It goes beyond basic vulnerability checkers by implementing real CVSS v3.1 base scoring on every finding (no hardcoded values), an attack chain correlation engine that links individual vulnerabilities into multi-step attack paths, a multi-threaded scanning engine that executes all modules in parallel, and professional HTML dashboards with JSON output for CI/CD integration.
+### The Attacker's Perspective
+
+Real-world intrusions rarely exploit a single vulnerability in isolation. Attackers chain discoveries: an exposed `.git/config` leaks credentials, which enables authenticated access to an admin endpoint with broken authorization, which exposes a SQL injection vector. Scanners that report individual findings without modeling these relationships underrepresent actual organizational risk.
+
+This tool is built around **attack chain correlation** — it identifies how vulnerabilities compound, not just that they exist. Every finding is cross-referenced against adjacent findings to surface exploitable paths that a flat, line-item report would miss.
+
+### Why CVSS v3.1 Scoring
+
+[CVSS v3.1](https://www.first.org/cvss/v3.1/specification-document) provides a vendor-neutral, standardized severity score (0.0–10.0) derived from attack vector, complexity, privileges required, user interaction, and impact scope. Severity labels alone (High/Medium/Low) are insufficient for prioritization across heterogeneous findings. CVSS scores enable:
+
+- Consistent severity comparison across vulnerability classes
+- Risk-based remediation prioritization
+- Alignment with industry-standard vulnerability databases (NVD, CVE)
+- CI/CD gate logic based on numeric thresholds
+
+### Why Attack Chains Matter
+
+Vulnerability correlation transforms isolated findings into actionable threat models. An information disclosure finding (CVSS 5.3) combined with an authentication bypass (CVSS 7.5) may collectively enable full account takeover — a combined risk profile that neither finding expresses alone. The `core/attack_chain.py` engine models these relationships explicitly.
 
 ---
 
-## Features
+## 🔥 Attack Chain Intelligence
 
-**Vulnerability Coverage**
-- OWASP Web Application Top 10 (2021): SQL Injection, XSS, Broken Access Control, Cryptographic Failures, Security Misconfiguration, Broken Authentication, SSRF, and Information Disclosure.
-- OWASP API Security Top 10 (2023): BOLA, Broken Authentication, Rate Limiting absence, BFLA, CORS misconfiguration, exposed API documentation, and shadow API version detection.
-- OWASP AI Security Top 10 (2025): Prompt Injection, Insecure Output Handling, Model DoS, AI Supply Chain exposure, Sensitive Information Disclosure, Insecure Plugin Design, and Model Theft.
+Traditional scanners report vulnerabilities in isolation. This framework correlates findings into **multi-step attack chains** that reflect how real adversaries operate:
 
-**Platform Capabilities**
-- Form-based and cookie/token authentication with automatic session maintenance.
-- Configurable crawler with depth and page limits, scope enforcement, and form extraction.
-- Central EndpointManager with deduplication, tagging, and filtered retrieval.
-- Thread-safe ResultCollector with CVSS auto-scoring and duplicate suppression.
-- Extensible attack chain engine — add new correlation rules without modifying engine code.
-- Proxy support for routing traffic through Burp Suite or OWASP ZAP.
-- CI/CD-friendly exit codes (exit 1 on Critical/High findings).
+```
+SQL Injection ──────────────→ Authentication Bypass
+XSS ────────────────────────→ Session Hijacking → Account Takeover
+SSRF ───────────────────────→ Cloud Metadata Access → Credential Leakage
+API Misconfiguration ───────→ Unauthorized Data Exfiltration
+Prompt Injection ───────────→ Sensitive Data Leakage via LLM
+Info Disclosure ────────────→ Targeted Injection → Privilege Escalation
+```
+
+**Adversary movement modeled:**
+```
+Exploit → Escalate → Exfiltrate → Persist
+```
+
+Each chain is mapped to MITRE ATT&CK tactics and OWASP categories. The `core/attack_chain.py` engine evaluates all findings against a rule registry at scan completion — a new correlation rule requires only a single `ChainRule` entry, no code changes.
 
 ---
 
-## Architecture
+## Security Coverage Matrix
+
+### OWASP Web Application Top 10 (2021)
+
+| Module | OWASP Category | Detection Technique |
+|---|---|---|
+| `bac` | A01: Broken Access Control | IDOR, path traversal, forced browsing, HTTP verb tampering |
+| `crypto` | A02: Cryptographic Failures | HTTP usage, insecure cookies, missing HSTS, credential leakage |
+| `sqli` | A03: Injection | Error-based SQLi, time-based blind SQLi, DB fingerprinting |
+| `xss` | A03: Injection | Reflected XSS, payload injection, reflection validation |
+| `insecure-design` | A04: Insecure Design | Business logic abuse, missing workflow validation |
+| `headers` | A05: Security Misconfiguration | Missing security headers (CSP, HSTS, X-Frame-Options, XCTO) |
+| `vuln-components` | A06: Vulnerable Components | Outdated libraries, exposed version fingerprints |
+| `auth` | A07: Identification & Authentication Failures | Default credentials, JWT misconfiguration, weak sessions |
+| `integrity` | A08: Software & Data Integrity Failures | Unsafe updates, untrusted input flows |
+| `logging` | A09: Security Logging & Monitoring Failures | Missing logs, verbose error exposure |
+| `ssrf` | A10: Server-Side Request Forgery | Cloud metadata abuse, loopback, URL injection |
+
+---
+
+### OWASP API Security Top 10 (2023)
+
+| API Risk | Detection Technique |
+|---|---|
+| API1: BOLA | Object ID manipulation, unauthorized access validation |
+| API2: Broken Authentication | Token bypass, session validation failure |
+| API3: Broken Object Property Level Authorization | Excessive data exposure in JSON responses |
+| API4: Unrestricted Resource Consumption | Rate limit bypass, request flooding |
+| API5: Broken Function Level Authorization | Unauthorized endpoint method access |
+| API6: Unrestricted Access to Business Flows | Workflow abuse simulation |
+| API7: SSRF | Internal endpoint probing, metadata access |
+| API8: Security Misconfiguration | CORS misconfig, debug exposure |
+| API9: Improper Inventory Management | Shadow / deprecated API discovery |
+| API10: Unsafe API Consumption | Untrusted external API usage detection |
+
+---
+
+### OWASP AI Security Top 10 (2025)
+
+| AI Risk | Detection Technique |
+|---|---|
+| LLM01: Prompt Injection | Jailbreak attempts, instruction override payloads |
+| LLM02: Insecure Output Handling | XSS/SSTI payloads in model output |
+| LLM03: Training Data Poisoning | Malicious pattern injection detection |
+| LLM04: Model Denial of Service | Token flooding, resource exhaustion |
+| LLM05: Supply Chain Vulnerabilities | Unsafe model/API dependencies |
+| LLM06: Sensitive Information Disclosure | Prompt-based data leakage attempts |
+| LLM07: Insecure Plugin Design | Plugin/tool execution abuse |
+| LLM08: Excessive Agency | Over-permissioned AI actions |
+| LLM09: Overreliance | Lack of validation of AI output |
+| LLM10: Model Theft | Extraction attempts / model probing |
+
+---
+
+## MITRE ATT&CK Mapping
+
+| Vulnerability | Technique ID | Technique Name | Tactic |
+|---|---|---|---|
+| SQL Injection | T1190 | Exploit Public-Facing Application | Initial Access |
+| XSS | T1059.007 | JavaScript Execution | Execution |
+| SSRF | T1190 | Exploit Public-Facing Application | Initial Access |
+| Path Traversal | T1083 | File and Directory Discovery | Discovery |
+| Information Disclosure | T1592 | Gather Victim Host Information | Reconnaissance |
+| Credential Attack | T1110 | Brute Force | Credential Access |
+| API Abuse | T1071 | Application Layer Protocol Abuse | Command & Control |
+| Prompt Injection | T1059 | Command and Scripting Abuse | Execution |
+
+---
+
+## Security Methodology
+
+### Scan Phase Architecture
+
+```
+CLI Entry Point (main.py)
+        │
+        ▼
+Session Setup ──────── Auth handler, proxy config, custom headers
+        │
+        ├──────────────────────────────────┐
+        ▼                                  ▼
+Passive Module Execution          Active Web Crawler
+(no payload injection)            (depth-limited, scope-enforced)
+  headers, info, crypto,          Form extraction, URL param
+  auth, api, ai                   discovery, endpoint dedup
+        │                                  │
+        │                                  ▼
+        │                         Active Module Execution
+        │                         (payload injection)
+        │                         sqli, xss, bac, ssrf
+        │                                  │
+        └──────────────┬───────────────────┘
+                       ▼
+              Result Collector
+              (thread-safe, deduplicated)
+                       │
+                       ▼
+              CVSS v3.1 Scoring Engine
+                       │
+                       ▼
+              Attack Chain Correlation
+              (vulnerability relationship mapping)
+                       │
+                       ▼
+              False-Positive Filter
+              (reflection validation, error signature matching)
+                       │
+                       ▼
+              Report Generator
+              HTML | JSON | Markdown
+```
+
+### Module Interaction Model
+
+**Passive modules** execute against the target origin directly — no form submission, no parameter injection. They inspect server responses, headers, and configuration signals. Passive results are available immediately and feed into attack chain correlation before active scanning begins.
+
+**Active modules** consume endpoints discovered by the crawler. The `EndpointManager` deduplicates across discovery sources and exposes typed query interfaces (`with_params()`, `api_endpoints()`) so each active module receives only the endpoint subset relevant to its technique.
+
+**Vulnerability correlation** in `attack_chain.py` operates on the aggregated finding set. It applies rule-based relationship modeling: Information Disclosure findings that expose technology version details escalate adjacent Vulnerable Component findings; Authentication failures that precede Injection findings generate compound attack chain entries with escalated severity.
+
+### False-Positive Reduction Strategy
+
+The scanner applies two-layer validation before finalizing findings:
+
+1. **Signature confirmation**: SQLi findings require a recognizable database error pattern in the response body. Generic HTTP 500 responses that also appear in clean baseline requests are suppressed.
+2. **Reflection validation**: XSS findings require unencoded payload presence in the response. HTML-entity-encoded reflections (`&lt;script&gt;`) are classified as non-exploitable and filtered.
+
+Thresholds are configurable via `config.yaml` to balance sensitivity against noise for different target environments.
+
+---
+
+## Architecture Overview
+
+### Data Flow
+
+```
+                         ┌──────────────────────────────┐
+                         │     CLI  ·  main.py           │
+                         │  URL · modules · auth · proxy │
+                         └──────────────┬───────────────┘
+                                        │
+                         ┌──────────────▼───────────────┐
+                         │        Session Setup          │
+                         │  cookies · headers · proxy    │
+                         └──────────────┬───────────────┘
+                                        │
+               ┌────────────────────────┴──────────────────────┐
+               │                                               │
+   ┌───────────▼────────────┐                  ┌──────────────▼──────────────┐
+   │    Passive Modules      │                  │       Active Crawler         │
+   │  headers  ·  info       │                  │  depth-limited · scoped      │
+   │  crypto   ·  auth       │                  │  form extraction             │
+   │  api      ·  ai         │                  │  URL param discovery         │
+   └───────────┬─────────────┘                  └──────────────┬──────────────┘
+               │                                               │
+               │                                ┌──────────────▼──────────────┐
+               │                                │       Active Modules         │
+               │                                │  sqli · xss · bac · ssrf    │
+               │                                └──────────────┬──────────────┘
+               │                                               │
+               └───────────────────────┬───────────────────────┘
+                                       │
+                         ┌─────────────▼────────────────┐
+                         │       Result Collector        │
+                         │  deduplicate · normalize      │
+                         └─────────────┬────────────────┘
+                                       │
+                         ┌─────────────▼────────────────┐
+                         │     CVSS v3.1 Scoring         │
+                         │  0.0 – 10.0  per finding      │
+                         └─────────────┬────────────────┘
+                                       │
+                         ┌─────────────▼────────────────┐
+                         │   Attack Chain Correlation    │
+                         │  model adversary paths        │
+                         │  MITRE ATT&CK · OWASP refs   │
+                         └─────────────┬────────────────┘
+                                       │
+                         ┌─────────────▼────────────────┐
+                         │    False-Positive Filter      │
+                         │  signature · reflection check │
+                         └──────┬──────────┬────────────┘
+                                │          │
+              ┌─────────────────┘          └─────────────────┐
+              │                                              │
+   ┌──────────▼──────────┐                     ┌────────────▼────────────┐
+   │      HTML Report     │                     │  JSON Report · Markdown  │
+   │  visual dashboard    │                     │  SIEM · CI/CD · tickets  │
+   └─────────────────────┘                     └─────────────────────────┘
+```
+
+### File Structure
 
 ```
 web-vuln-scanner/
 │
-├── main.py                      ← Master orchestrator (CLI entry point)
+├── main.py                       CLI entry point and scan orchestrator
 │
-├── core/
-│   ├── target.py                ← Target metadata and scope management
-│   ├── crawler.py               ← Enhanced crawler + EndpointManager integration
-│   ├── endpoint_manager.py      ← Thread-safe central endpoint registry
-│   ├── scanner_engine.py        ← ThreadPoolExecutor-based module runner
-│   ├── result_collector.py      ← Thread-safe finding aggregator + normaliser
-│   ├── attack_chain.py          ← Vulnerability correlation engine (10 built-in rules)
-│   ├── cvss.py                  ← Real CVSS v3.1 base score calculator
-│   ├── report.py                ← Professional HTML + JSON report generator
-│   ├── auth.py                  ← Form-based / cookie / token auth handler
-│   └── utils.py                 ← HTTP session factory, URL helpers, timing
+├── core/                         Engine layer
+│   ├── target.py                 Target metadata, scope enforcement
+│   ├── crawler.py                Enhanced crawler with endpoint management
+│   ├── endpoint_manager.py       Thread-safe endpoint registry and deduplication
+│   ├── scanner_engine.py         ThreadPoolExecutor-based module runner
+│   ├── result_collector.py       Thread-safe finding aggregator with dedup and CVSS
+│   ├── attack_chain.py           Vulnerability correlation and chain modeling
+│   ├── cvss.py                   CVSS v3.1 base score calculator
+│   ├── report.py                 HTML and JSON report generation
+│   ├── auth.py                   Authentication handler (cookies, headers, proxy)
+│   └── utils.py                  HTTP session factory, URL normalization, timing
 │
-├── modules/                     ← Scanner modules (all preserved)
-│   ├── scanner_base.py
-│   ├── header_auditor.py
-│   ├── info_disclosure.py
-│   ├── sql_injection.py
-│   ├── xss_scanner.py
-│   ├── broken_access_control.py
-│   ├── cryptographic_failures.py
-│   ├── broken_auth_scanner.py
-│   ├── ssrf_scanner.py
-│   ├── api_scanner.py
-│   ├── ai_scanner.py
-│   ├── crawler.py
-│   └── false_positive_filter.py
+├── modules/                      Scanner modules (one per vulnerability class)
+│   ├── scanner_base.py           Abstract base class — standardizes finding schema
+│   ├── header_auditor.py         A05:2021 — Security header analysis
+│   ├── info_disclosure.py        A05:2021 — Sensitive path and error detection
+│   ├── sql_injection.py          A03:2021 — Error-based and time-based blind SQLi
+│   ├── xss_scanner.py            A03:2021 — Reflected XSS with reflection validation
+│   ├── broken_access_control.py  A01:2021 — IDOR, path traversal, verb tampering
+│   ├── cryptographic_failures.py A02:2021 — TLS, cookie flags, HSTS
+│   ├── broken_auth_scanner.py    A07:2021 — Default credentials, lockout, JWT
+│   ├── ssrf_scanner.py           A10:2021 — Cloud metadata, loopback, header injection
+│   ├── api_scanner.py            API Top 10 (2023) — BOLA, rate limits, CORS
+│   ├── ai_scanner.py             AI Top 10 (2025) — Prompt injection, model theft
+│   ├── crawler.py                Web crawler with form and parameter extraction
+│   └── false_positive_filter.py  Post-scan noise reduction
 │
-├── data/
-│   ├── payloads.txt             ← Categorised injection payload library
-│   └── wordlist.txt             ← Directory/endpoint discovery wordlist
+├── reporter/                     Output layer
+│   ├── html_reporter.py          Interactive HTML dashboard with severity charts
+│   ├── json_reporter.py          Machine-readable structured JSON
+│   └── markdown_reporter.py      Human-readable Markdown format
 │
-├── reporter/                    ← Legacy reporters (preserved)
-├── utils/                       ← Legacy utils (preserved)
-├── tests/                       ← Test suite
-├── config.yaml                  ← Default configuration
-└── output/                      ← Generated reports (auto-created)
+├── utils/                        Shared infrastructure
+│   ├── logger.py                 Structured, color-coded logging
+│   ├── config.py                 YAML configuration loader
+│   └── mitre.py                  MITRE ATT&CK technique mapping database
+│
+├── data/                         Payload and wordlist assets
+│   ├── payloads.txt
+│   └── wordlist.txt
+│
+├── tests/                        pytest test suite with HTTP mocking
+├── examples/                     Docker Compose lab environment (DVWA)
+└── config.yaml                   Default scan configuration
 ```
+
+### Component Responsibilities
+
+| Component | Responsibility |
+|---|---|
+| `main.py` | CLI argument parsing, session construction, scan phase orchestration, report dispatch |
+| `core/target.py` | Immutable target representation, same-origin scope enforcement |
+| `core/endpoint_manager.py` | Thread-safe endpoint deduplication registry with typed query interfaces |
+| `core/scanner_engine.py` | Parallel module execution via ThreadPoolExecutor, module adapter pattern |
+| `core/result_collector.py` | Finding normalization, deduplication by fingerprint, CVSS scoring application |
+| `core/attack_chain.py` | Finding relationship modeling, severity escalation, chain entry generation |
+| `core/cvss.py` | CVSS v3.1 base score calculation per finding type |
+| `modules/scanner_base.py` | Standardized finding schema factory, shared logging interface |
 
 ---
 
 ## Installation
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/niteshghimire0147/web-vuln-scanner.git
 cd web-vuln-scanner
 
-# 2. Create a virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# 3. Install dependencies
-pip install -r requirements.txt
-```
-
-**Requirement:** Python 3.10 or higher.
-=======
-# Web Application Vulnerability Scanner
-
-[![CI](https://github.com/niteshghimire/web-vuln-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/niteshghimire/web-vuln-scanner/actions)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)](https://python.org)
-[![OWASP Top 10](https://img.shields.io/badge/OWASP-Top%2010-red)](https://owasp.org/Top10/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-> OWASP Top 10 web application scanner. Crawls a target site and tests for SQL injection, reflected XSS, security header gaps, and sensitive file exposure. Outputs professional HTML/JSON/text reports.
-
----
-
-## Highlights
-
-- **SQL Injection** — error-based (20+ database error signatures) + time-based blind
-- **Reflected XSS** — 8 payload variants, checks for unescaped reflection in responses
-- **Security Headers** — 6 required headers (HSTS, CSP, X-Frame-Options, etc.) + 4 leaking headers
-- **Information Disclosure** — 25 sensitive paths (`.env`, `.git`, `phpinfo.php`, Spring actuators)
-- **Smart Crawler** — same-origin, form extraction, URL parameter discovery
-- **HTML Reports** — self-contained with severity bar chart; JSON and text also available
-- **Lab Demo** — included `docker-compose.yml` spins up DVWA for safe, legal testing
-
----
-
-## Quick Start
-
-```bash
 pip install -r requirements.txt
 
-# Test against DVWA (safe demo environment)
-docker run -d -p 8080:80 vulnerables/web-dvwa
-python main.py --url http://localhost:8080 --cookie "security=low; PHPSESSID=test" \
-  --format html -o dvwa_scan -v
+# Optional: development dependencies (testing, linting)
+pip install -r requirements-dev.txt
 ```
->>>>>>> 39f622aba47790ca42e684935d893356126fa41a
+
+**Requirement:** Python 3.9+
 
 ---
 
 ## Usage
 
 ```bash
-<<<<<<< HEAD
-# Basic scan — all modules, HTML report
-python main.py --url http://target.com -v
-
-# Targeted module scan
-python main.py --url http://target.com --modules sqli,xss,bac,ssrf
-
-# API and AI security assessment
-python main.py --url http://api.target.com --modules api,ai,auth,crypto --format all
-
-# Authenticated scan (form login)
-python main.py --url http://target.com \
-               --login-url http://target.com/login \
-               --username admin --password admin123 --format all
-
-# Scan with session cookie
-python main.py --url http://target.com \
-               --cookie "PHPSESSID=abc123; security=low" --modules all
-
-# Route through Burp Suite
-python main.py --url http://target.com --proxy http://127.0.0.1:8080 --format all -v
-
-# High-performance scan
-python main.py --url http://target.com --threads 20 --depth 3 --max-pages 100
-=======
 python main.py --url <TARGET> [OPTIONS]
 
 Options:
   --url, -u         Target URL (required)
-  --modules         Comma-separated: headers,sqli,xss,info (default: all)
-  --depth           Crawler depth (default: 2)
-  --max-pages       Max pages to crawl (default: 50)
-  --timeout         HTTP timeout in seconds (default: 10)
-  --delay           Delay between requests (default: 0)
-  --cookie          Session cookie (e.g. "PHPSESSID=abc; security=low")
-  --header          Extra header: "Name: Value" (repeatable)
-  -o, --output      Output base name
-  --format          html / json / text / all (default: html)
-  -v, --verbose     Show progress
+  --modules         Comma-separated module list (default: all)
+                    headers,info,sqli,xss,bac,crypto,auth,ssrf,api,ai
+  --depth           Crawler recursion depth (default: 2)
+  --max-pages       Maximum pages to crawl (default: 50)
+  --timeout         HTTP request timeout in seconds (default: 10)
+  --delay           Inter-request delay for rate limiting (default: 0)
+  --cookie          Session cookie string ("PHPSESSID=abc; security=low")
+  --header          Additional HTTP header — repeatable ("Name: Value")
+  --proxy           HTTP/HTTPS proxy URL ("http://127.0.0.1:8080")
+  -o, --output      Output file base name
+  --format          Output format: html / json / text / all (default: html)
+  --fail-on         Exit code 1 threshold: critical / high / medium / none (default: high)
+  -v, --verbose     Enable verbose progress output
 
-Exit codes: 0 = no HIGH/CRITICAL, 1 = HIGH or CRITICAL found
+Exit codes:
+  0   No findings at or above --fail-on threshold
+  1   Findings detected at or above threshold (security alert, not build failure)
 ```
 
-**Examples:**
+### Examples
 
 ```bash
-# Full scan with HTML report
+# Full scan, all modules, all output formats
 python main.py -u http://testapp.local -o report --format all -v
 
-# SQLi + XSS only, authenticated
-python main.py -u http://app.com --modules sqli,xss --cookie "session=abc123"
+# Injection-focused assessment with authenticated session
+python main.py -u http://app.com --modules sqli,xss,bac --cookie "session=abc123"
 
-# Deep crawl with rate limiting
+# Rate-limited deep crawl
 python main.py -u http://app.com --depth 3 --max-pages 200 --delay 0.5
->>>>>>> 39f622aba47790ca42e684935d893356126fa41a
+
+# API and AI security assessment
+python main.py -u http://api.target.com --modules api,ai,auth,crypto --format all
+
+# Intercept traffic through Burp Suite
+python main.py -u http://target.com --proxy http://127.0.0.1:8080 --format all -v
 ```
 
 ---
 
-<<<<<<< HEAD
-## Modules
+## CI/CD Integration
 
-| Module  | OWASP Reference    | Description                                                  |
-|---------|--------------------|--------------------------------------------------------------|
-| headers | A05:2021           | CSP, HSTS, X-Frame-Options, X-Content-Type-Options           |
-| info    | A05:2021           | .env, .git, backups, stack traces, sensitive paths           |
-| sqli    | A03:2021           | Error-based and time-based blind SQL injection               |
-| xss     | A03:2021           | Reflected XSS in forms and URL parameters                    |
-| bac     | A01:2021           | IDOR, path traversal, forced browsing, verb tampering        |
-| crypto  | A02:2021           | HTTP transmission, cookie flags, HSTS, credential leakage    |
-| auth    | A07:2021           | Default credentials, account lockout, JWT misconfiguration   |
-| ssrf    | A10:2021           | Cloud metadata, loopback, and header-injection SSRF          |
-| api     | API Top 10 (2023)  | BOLA, broken auth, rate limiting, CORS, shadow APIs          |
-| ai      | AI Top 10 (2025)   | Prompt injection, output handling, model theft, supply chain |
+The scanner is designed as a security gate in automated pipelines. All human-readable output (banner, progress, summary) goes to **stderr**. **stdout** is silent — machine-readable data is written to files only.
 
----
+### Exit Code Contract
 
-## CVSS v3.1 Scoring
+| Code | Meaning |
+|---|---|
+| `0` | Scan complete — no findings at or above the configured threshold |
+| `1` | Security alert — findings detected at or above threshold |
 
-Every finding is automatically scored using the full CVSS v3.1 base formula. No values are hardcoded. The engine computes the Impact Sub-Score, Exploitability Sub-Score, and final Base Score according to the FIRST specification.
+### `--fail-on` Threshold Control
 
+```bash
+# Audit-only — always exits 0, findings still reported (never blocks pipeline)
+python main.py -u https://staging.app.com --format json --fail-on none
+
+# Block only on CRITICAL findings
+python main.py -u https://staging.app.com --format json --fail-on critical
+
+# Block on HIGH or CRITICAL (default)
+python main.py -u https://staging.app.com --format json --fail-on high
+
+# Block on MEDIUM and above
+python main.py -u https://staging.app.com --format json --fail-on medium
 ```
-Finding : SQL Injection (unauthenticated, network-reachable)
-Vector  : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
-Score   : 10.0 — Critical
-=======
-## OWASP Coverage
 
-| Module | OWASP Category | Checks |
-|--------|---------------|--------|
-| `headers` | A05:2021 Security Misconfiguration | HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
-| `sqli` | A03:2021 Injection | Error-based SQLi, Time-based blind SQLi (forms + URL params) |
-| `xss` | A03:2021 Injection | Reflected XSS in form inputs and URL parameters |
-| `info` | A05:2021 Security Misconfiguration | Sensitive files (.env, .git, phpinfo.php, actuators), verbose errors |
+### Supported CI Platforms
 
----
+| Platform | Integration Method |
+|---|---|
+| GitHub Actions | `continue-on-error: true` + `upload-artifact` — see `.github/workflows/ci.yml` |
+| GitLab CI | `allow_failure: true` with JSON artifact |
+| Jenkins | `catchError(buildResult: 'UNSTABLE')` block |
+| Azure DevOps | `continueOnError: true` task flag |
 
-## Tech Stack
-
-- **Python 3.9+**
-- **requests** — HTTP client
-- **beautifulsoup4** — HTML parsing and form extraction
-- **colorama** — Colored terminal output
-
----
-
-## Safe Demo Environment
+### GitHub Actions Quick Example
 
 ```yaml
-# examples/docker-compose.yml
-# Starts DVWA + WebGoat for safe, legal scanner testing
-docker compose -f examples/docker-compose.yml up -d
-python main.py --url http://localhost:8080 --cookie "security=low; PHPSESSID=test" -v
->>>>>>> 39f622aba47790ca42e684935d893356126fa41a
+- name: Security Scan
+  id: scan
+  run: python main.py --url ${{ vars.STAGING_URL }} --format json --fail-on critical
+  continue-on-error: true
+
+- name: Upload Report
+  uses: actions/upload-artifact@v4
+  with:
+    name: security-report
+    path: output/*.json
+
+- name: Enforce Gate
+  if: steps.scan.outcome == 'failure'
+  run: echo "CRITICAL findings — review artifact" && exit 1
 ```
 
 ---
 
-<<<<<<< HEAD
-## Attack Chain Correlation
+## Scanner Modules
 
-The engine correlates individual findings into multi-step attack paths using a keyword-based rule registry. Ten rules are built in, and new ones can be added by appending a `ChainRule` to `core/attack_chain.py` without modifying any engine logic.
+| Module | OWASP Reference | Detection Technique |
+|---|---|---|
+| `headers` | A05:2021 | Missing CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy |
+| `info` | A05:2021 | 25+ sensitive path probes, stack trace and verbose error detection |
+| `sqli` | A03:2021 | Error-based (20+ DB signatures) + time-based blind, database fingerprinting |
+| `xss` | A03:2021 | Reflected XSS, 8 payload variants, unescaped reflection validation |
+| `bac` | A01:2021 | IDOR, path traversal, forced browsing, HTTP verb tampering |
+| `crypto` | A02:2021 | Plaintext HTTP transmission, cookie flag analysis, absent HSTS |
+| `auth` | A07:2021 | Default credential enumeration, lockout bypass, JWT algorithm confusion |
+| `ssrf` | A10:2021 | Cloud metadata probing (AWS/GCP/Azure), loopback injection, header-based SSRF |
+| `api` | API Top 10 (2023) | BOLA, broken auth, rate limiting absence, CORS misconfiguration, shadow APIs |
+| `ai` | AI Top 10 (2025) | Prompt injection, insecure output handling, model theft, supply chain exposure |
 
-| Chain                                     | Risk     | Trigger Conditions                               |
-|-------------------------------------------|----------|--------------------------------------------------|
-| Session Hijacking via XSS                 | Critical | XSS + missing HttpOnly flag                      |
-| Sensitive Data Exposure via IDOR          | Critical | IDOR + broken/missing authentication             |
-| Cloud Credential Exposure via SSRF        | Critical | SSRF + cloud metadata endpoint access            |
-| Authentication Bypass via SQLi            | Critical | SQL injection on a login endpoint                |
-| Full Account Takeover via Broken Auth     | Critical | Broken auth + weak JWT / session tokens          |
-| AI Prompt Injection → Data Exfiltration   | Critical | Prompt injection + sensitive info disclosure     |
-| Stored XSS → Malware Distribution        | High     | XSS + missing Content-Security-Policy            |
-| Path Traversal → RCE                     | Critical | Path traversal + writable upload / log poisoning |
-| API Key Leakage → Service Compromise     | High     | Exposed credential + unauthenticated API         |
-| Insecure Crypto + Data Transmission Risk  | High     | HTTP transmission + missing Secure cookie flag   |
+---
+
+## False-Positive Filtering
+
+The post-scan filter (`modules/false_positive_filter.py`) applies technique-specific validation before findings are committed to the report:
+
+- **SQL Injection**: Requires a recognizable database error signature in the response body. HTTP 500 responses not containing DB-specific patterns are suppressed.
+- **XSS**: Validates that the injected payload appears *unencoded* in the response. HTML-entity-encoded reflections are classified as non-exploitable and excluded.
+
+Configurable thresholds in `config.yaml`:
+
+```yaml
+false_positive:
+  enabled: true
+  min_body_diff_bytes: 50       # Minimum response delta to flag anomalous behavior
+  reflection_threshold: 0.8     # Minimum unencoded reflection match ratio for XSS
+```
 
 ---
 
 ## Report Output
 
-The HTML report is a self-contained, single-file dark-theme dashboard with a KPI hero row, severity distribution bar chart, collapsible attack chain explorer, filterable finding cards with full CVSS vectors, and a deduplicated recommendations section.
+Reports are written to `output/` with timestamped filenames.
 
-The JSON report provides structured output suitable for SIEM ingestion, CI/CD pipeline integration, or custom dashboard consumption. The exit code is 1 on Critical or High findings and 0 otherwise, enabling automated gate-keeping in pipelines.
+| Format | Primary Use |
+|---|---|
+| HTML | Client deliverables, visual severity dashboards, interactive collapsible findings |
+| JSON | SIEM ingestion, CI/CD pipeline integration, custom tooling and automation |
+| Markdown | Documentation, ticket creation, peer review |
 
----
-
-## Sample Output
+### Sample Terminal Output
 
 ```
-  ╔════════════════════════════════════════════════════════════════════╗
-  ║   Web Application Vulnerability Scanner  v2.0.0                  ║
-  ║   OWASP Web Top 10 · API Top 10 · AI Top 10 · CVSS v3.1         ║
-  ╚════════════════════════════════════════════════════════════════════╝
+  +==================================================================+
+  |       Web Application Vulnerability Scanner  v2.0.0             |
+  |  OWASP Web Top 10 (2021) · API Top 10 (2023) · AI Top 10 (2025)|
+  |  *** AUTHORIZED TESTING ONLY ***                                 |
+  +==================================================================+
 
-[*] Target  : http://dvwa.local
-[*] Modules : all (10 modules)
-[*] Threads : 10
+[1/10] Security Headers (A05:2021)...         3 findings
+[2/10] Information Disclosure (A05:2021)...   1 finding
+[3/10] SQL Injection (A03:2021)...            2 findings
+[4/10] Cross-Site Scripting (A03:2021)...     1 finding
+[5/10] Broken Access Control (A01:2021)...    2 findings
+[6/10] Cryptographic Failures (A02:2021)...   1 finding
+[7/10] Authentication Failures (A07:2021)...  2 findings
+[8/10] SSRF (A10:2021)...                     1 finding
+[9/10] API Security (API Top 10)...           3 findings
+[10/10] AI Security (AI Top 10)...            2 findings
 
-[*] Phase 1/4 — Crawling target...
-[+] Discovered 23 endpoints (5 forms, 2 API, 14 with params)
+============================================================
+  Scan Summary
+============================================================
+  Total findings : 18
+  Elapsed time   : 47.3s
 
-[*] Phase 2/4 — Scanning (10 threads)...
-[+] Scanner complete — 18 raw findings
-
-[*] Phase 3/4 — Correlating attack chains...
-[+] Identified 4 attack chain(s)
-
-[*] Phase 4/4 — Generating reports...
-[+] HTML report : output/scan_dvwa.local_20260426_143021.html
-[+] JSON report : output/scan_dvwa.local_20260426_143021.json
-
-================================================================
-  Scan Complete  |  47.3s  |  18 findings  |  4 chains
-================================================================
-  CRITICAL        3
-  HIGH            6
-  MEDIUM          5
-  LOW             2
-  INFORMATIONAL   2
-================================================================
+  CRITICAL       3
+  HIGH           6
+  MEDIUM         5
+  LOW            2
+  INFORMATIONAL  2
+============================================================
 ```
 
 ---
 
-## Future Improvements
+## 🧪 Testing
 
-- JavaScript-rendered SPA support via Playwright or Selenium for authenticated crawling of React/Vue applications.
-- SARIF output format for native GitHub Code Scanning and Azure DevOps integration.
-- YAML-defined custom scan rules without requiring Python coding.
-- Continuous scanning mode with delta reporting (new findings only since last scan).
-- GraphQL introspection module for schema analysis and field-level injection testing.
-- Subdomain enumeration to expand scope discovery before endpoint crawling.
-- Burp Suite extension for consuming scan results inside existing pentesting workflows.
+```
+65 / 65 tests passing
+```
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v --cov=modules --cov-report=term-missing
+```
+
+| Test Module | Coverage |
+|---|---|
+| `test_sql_injection.py` | Error-based and time-based blind SQLi detection, form and URL parameter injection |
+| `test_xss_scanner.py` | Reflected XSS reflection, script context detection, hidden input skipping |
+| `test_header_auditor.py` | Missing header detection, server leakage, weak CSP flagging |
+| `test_info_disclosure.py` | Sensitive path probing, stack trace detection, SPA false-positive suppression |
+| `test_false_positive_filter.py` | SQL error signature validation, XSS reflection confirmation, baseline comparison |
+
+All tests use HTTP response mocking (`responses` library) — no live network required.
 
 ---
+
+## Safe Testing Environment
+
+Use intentionally vulnerable applications for authorized lab testing:
+
+```bash
+# DVWA (Damn Vulnerable Web Application) — low security level
+python main.py -u http://localhost:8080 \
+  --cookie "security=low; PHPSESSID=test" \
+  --format all -v
+
+# Full lab environment via Docker Compose (see examples/)
+docker-compose -f examples/docker-compose.yml up -d
+python main.py -u http://localhost:8080 --format all -v
+```
+
+Recommended lab targets: [DVWA](http://dvwa.co.uk/), [WebGoat](https://owasp.org/www-project-webgoat/), [Juice Shop](https://owasp.org/www-project-juice-shop/)
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Language | Python 3.9+ |
+| HTTP Client | requests ≥ 2.31.0 |
+| HTML Parsing | beautifulsoup4 ≥ 4.12.0 |
+| Configuration | PyYAML ≥ 6.0 |
+| Terminal Output | colorama ≥ 0.4.6 |
+| Testing | pytest + responses (HTTP mocking) |
+| Static Analysis | flake8 (linting), bandit (security) |
+| CI/CD | GitHub Actions |
+
+---
+
+## Known Limitations
+
+| Area | Limitation |
+|---|---|
+| SQLi | Time-based blind detection relies on response timing; susceptible to network jitter on high-latency targets |
+| Crawling | Depth-limited; JavaScript-rendered SPAs (React, Vue, Angular) require supplemental tooling (Playwright/Selenium) |
+| XSS | Reflection-based detection only; DOM-based and stored XSS require runtime execution or two-phase retrieval |
+| Authentication | Session cookie passthrough only — no login form automation or MFA handling |
+| CSRF | Out of scope; requires browser-context execution |
+| Stored XSS | Excluded; two-phase submit-retrieve approach carries persistence risk on production targets |
+
+---
+
+## Roadmap
+
+- [ ] JavaScript-rendered SPA support via Playwright integration
+- [ ] SARIF output format for GitHub Code Scanning native integration
+- [ ] YAML-defined custom scan rule engine (no Python required)
+- [ ] GraphQL introspection and schema enumeration module
+- [ ] Continuous scanning mode with delta-only reporting
+- [ ] Stored XSS detection via sandboxed two-phase approach
+- [ ] Subdomain enumeration for expanded attack surface discovery
+- [ ] WebSocket security testing module
+
+---
+
+## 📌 Key Highlights
+
+| | |
+|---|---|
+| ✔ | Modular plugin-based architecture — add a scanner by subclassing `ScannerBase`, no engine changes |
+| ✔ | Real attack chain correlation — not isolated findings, but modeled adversary paths |
+| ✔ | Production-ready CI/CD behavior — configurable exit codes, clean stdout/stderr separation |
+| ✔ | Three security frameworks in one tool — Web + API + AI, all OWASP-aligned |
+| ✔ | Extensible for enterprise workflows — SIEM-ready JSON, MITRE ATT&CK context on every finding |
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, the module authoring guide, and pull request process.
+
+## Security Policy
+
+See [SECURITY.md](SECURITY.md) for the responsible disclosure policy.
 
 ## Disclaimer
 
-**AUTHORIZED TESTING ONLY.** This tool is designed for use by security professionals on systems they own or have explicit written permission to test. Unauthorized use against systems you do not own or have permission to test is illegal and unethical. The author assumes no liability for misuse.
+**Authorized testing only.** This tool is intended for use against systems you own or have explicit written authorization to test. Unauthorized use against third-party systems is illegal. See [DISCLAIMER.md](DISCLAIMER.md).
 
----
-
-## Author
-
-**Nitesh Ghimire** — Security Researcher  
-GitHub: [@niteshghimire0147](https://github.com/niteshghimire0147)
-
----
-
-*Built for the security community. Always hack ethically.*
-=======
-## Legal
-
-For authorized security testing only. See [DISCLAIMER.md](DISCLAIMER.md).
 Licensed under [MIT](LICENSE).
 
 ---
 
-## Who This Tool Is For
-
-Penetration testers running web application assessments against DVWA, HackTheBox, or real client targets. Useful for bug bounty hunters who want automated discovery of SQLi and XSS entry points before manual exploitation. Also useful for developers running security regression tests against their own applications.
-
-## Real-World Use Case
-
-During a web application pentest, point this scanner at the authenticated DVWA instance (pass the session cookie with `--cookie`) to crawl all forms and URL parameters, then run SQLi and XSS modules across them. The HTML report with MITRE ATT&CK context goes into the client deliverable. The false-positive filter (`modules/false_positive_filter.py`) runs automatically to remove coincidental SQL keyword matches before findings reach the report.
-
-## MITRE ATT&CK Mapping
-
-| Vulnerability | Technique | Tactic |
-|---------------|-----------|--------|
-| SQL Injection | [T1190 — Exploit Public-Facing Application](https://attack.mitre.org/techniques/T1190/) | Initial Access |
-| XSS | [T1059.007 — JavaScript](https://attack.mitre.org/techniques/T1059/) | Execution |
-| Info Disclosure | [T1592.002 — Software](https://attack.mitre.org/techniques/T1592/) | Reconnaissance |
-| Path Traversal | [T1083 — File and Directory Discovery](https://attack.mitre.org/techniques/T1083/) | Discovery |
-| Missing Headers | [T1592 — Gather Victim Host Information](https://attack.mitre.org/techniques/T1592/) | Reconnaissance |
-
-## Limitations
-
-- **Error-based SQLi only** — does not detect blind/time-based injection without a baseline response comparison.
-- **Crawl depth** is limited; single-page apps (React/Vue/Angular) require manual form submission.
-- **XSS detection** confirms reflection but cannot execute JavaScript to confirm DOM-based sinks.
-- **Authenticated scanning** requires manually passing a valid session cookie — no login automation.
-- **No CSRF testing** — out of scope for this scanner.
-
-## Interview Talking Points
-
-**"How does your false-positive filter work?"**
-> For SQLi, I require a recognisable database error signature in the response — Oracle's `ORA-` prefix, MySQL's syntax error string, PostgreSQL's `pg_query()`. If the response has a generic "internal server error" that also appears in the baseline, it's filtered out. For XSS, I check that the payload appears *unencoded* in the response — if the app HTML-encodes `<script>` to `&lt;script&gt;`, that's not exploitable, so the finding is suppressed. This cuts my false-positive rate significantly before findings reach the client report.
-
-**"What's the difference between reflected and stored XSS, and does your scanner detect both?"**
-> Reflected XSS: payload is injected in a request and immediately reflected in the response — detectable with one request/response cycle, which is what my scanner does. Stored XSS: payload is persisted server-side and rendered later to a different user — requires two steps (submit then retrieve) and is much harder to automate safely without risking persistence on production systems. My scanner detects reflected XSS only.
->>>>>>> 39f622aba47790ca42e684935d893356126fa41a
+**Author:** Nitesh Ghimire — Security Researcher
+GitHub: [@niteshghimire0147](https://github.com/niteshghimire0147)

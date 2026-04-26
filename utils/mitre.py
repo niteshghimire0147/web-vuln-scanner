@@ -9,7 +9,7 @@ References: https://attack.mitre.org/techniques/
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional
 
 
@@ -182,13 +182,7 @@ _TECHNIQUES: dict[str, Technique] = {
         description="Privileged containers share the host kernel and can escape via /proc, device access, etc.",
         detection="OPA/Gatekeeper policy denying privileged:true; Falco rule for privileged container start.",
     ),
-    "exposed_docker_socket": Technique(
-        id="T1552", name="Unsecured Credentials", tactic="Credential Access",
-        url="https://attack.mitre.org/techniques/T1552/",
-        description="Mounting /var/run/docker.sock gives container-to-host escape via Docker API.",
-        detection="Falco: alert on docker.sock mount; PSP/OPA: deny hostPath mounts of docker.sock.",
-        sub_id="T1552.001", sub_name="Credentials In Files",
-    ),
+
     "container_secret_leak": Technique(
         id="T1552", name="Unsecured Credentials", tactic="Credential Access",
         url="https://attack.mitre.org/techniques/T1552/",
@@ -196,12 +190,7 @@ _TECHNIQUES: dict[str, Technique] = {
         detection="Scan image layers with Trivy/truffleHog; enforce secret manager usage (Vault, AWS SM).",
         sub_id="T1552.007", sub_name="Container API",
     ),
-    "dockerfile_root": Technique(
-        id="T1548", name="Abuse Elevation Control Mechanism", tactic="Privilege Escalation",
-        url="https://attack.mitre.org/techniques/T1548/",
-        description="Containers running as root can escalate privileges if kernel vulnerabilities are present.",
-        detection="Dockerfile linting (hadolint); enforce non-root USER in Dockerfile; seccomp profiles.",
-    ),
+
 
     # ── Phishing / Social Engineering ────────────────────────────────────────
 

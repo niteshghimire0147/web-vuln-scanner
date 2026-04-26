@@ -8,10 +8,9 @@ EndpointManager and collecting results into ResultCollector.
 Each module adapter translates the new core API into the existing
 modules/ interface so legacy code is preserved untouched.
 """
-import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Callable, Optional
+from typing import Callable
 
 import requests
 

@@ -28,4 +28,4 @@ The author (Nitesh Ghimire) provides this software "as is" without any warranty.
 
 ---
 
-*Demo environment: Use DVWA (`docker run -p 8080:80 vulnerables/web-dvwa`) for safe, legal testing.*
+*Demo environment: Use DVWA (Damn Vulnerable Web Application) for safe, legal testing.*

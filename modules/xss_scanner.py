@@ -82,7 +82,7 @@ class XSSScanner(ScannerBase):
             # Check if the full payload or the marker appears in a script/attr context
             if re.search(r'<script[^>]*>', resp.text, re.IGNORECASE) and XSS_MARKER in resp.text:
                 severity = "HIGH"
-                evidence = f"Payload reflected in script context"
+                evidence = "Payload reflected in script context"
             else:
                 severity = "MEDIUM"
                 evidence = f"Payload marker '{XSS_MARKER}' reflected in response body"

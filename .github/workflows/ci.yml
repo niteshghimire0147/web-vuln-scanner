@@ -1,23 +1,102 @@
 name: CI
 
+# Exit code contract:
+#   0 = scan completed, no findings at or above --fail-on threshold
+#   1 = scan completed, findings AT OR ABOVE threshold were detected (security alert)
+#   1 = configuration / argument error (check stderr for details)
+#
+# In CI, exit code 1 from the scanner means "security alert state", NOT "build broken".
+# Use --fail-on none   to always exit 0  (audit-only, never blocks the pipeline).
+# Use --fail-on critical to only block on CRITICAL findings.
+# Use --fail-on high   to block on HIGH or CRITICAL findings (default).
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  test:
+  lint:
+    name: Lint & Style
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install flake8 bandit
+      - name: Flake8
+        run: flake8 . --max-line-length=120 --exclude=__pycache__,.git,*.egg-info
+      - name: Bandit Security Scan
+        run: bandit -r modules/ core/ utils/ reporter/ -ll --skip B101
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "${{ matrix.python-version }}" }
-      - run: pip install -r requirements.txt pytest pytest-cov flake8
-      - run: flake8 . --max-line-length=120 --exclude=__pycache__,.git,*.egg-info
-      - run: pytest tests/ -v --cov=modules --cov-report=xml
-      - uses: codecov/codecov-action@v4
-        with: { file: coverage.xml, fail_ci_if_error: false }
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Run Tests
+        run: pytest tests/ -v --cov=modules --cov-report=xml --cov-report=term-missing
+      - name: Upload Coverage
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  # ── Security gate (optional — add to your own pipeline targeting a lab/staging URL) ──
+  #
+  # USAGE PATTERNS:
+  #
+  # Pattern A — audit only, never blocks the pipeline:
+  #   run: python main.py --url ${{ vars.STAGING_URL }} --format json --fail-on none
+  #
+  # Pattern B — block pipeline only on CRITICAL findings:
+  #   run: python main.py --url ${{ vars.STAGING_URL }} --format json --fail-on critical
+  #
+  # Pattern C — block on HIGH or CRITICAL (default), upload JSON as artifact:
+  #   run: python main.py --url ${{ vars.STAGING_URL }} --format json
+  #   The step below shows this with continue-on-error so the artifact
+  #   upload still runs even when findings are present.
+  #
+  # security-gate:
+  #   name: Security Scan (Staging)
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #     - run: pip install -r requirements.txt
+  #     - name: Run Scanner
+  #       id: scan
+  #       run: |
+  #         python main.py \
+  #           --url ${{ vars.STAGING_URL }} \
+  #           --modules headers,info,crypto,auth,ssrf,api \
+  #           --format json \
+  #           --fail-on critical \
+  #           -o scan-report
+  #       continue-on-error: true        # upload artifact even if findings found
+  #     - name: Upload Scan Report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: security-scan-report
+  #         path: scan-report.json
+  #     - name: Enforce Gate
+  #       if: steps.scan.outcome == 'failure'
+  #       run: |
+  #         echo "CRITICAL findings detected — review scan-report.json artifact"
+  #         exit 1

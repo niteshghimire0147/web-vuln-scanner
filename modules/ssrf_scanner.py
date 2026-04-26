@@ -9,7 +9,6 @@ All probes target safe, non-destructive destinations:
 - Well-known cloud metadata endpoints (read-only)
 - IPv6 loopback
 """
-import re
 import time
 from typing import List
 from urllib.parse import urlparse, parse_qs, urlencode
@@ -216,7 +215,7 @@ class SSRFScanner(ScannerBase):
         back-end requests (Host header injection vector for SSRF).
         """
         try:
-            baseline = self.session.get(self.target, timeout=self.timeout)
+            self.session.get(self.target, timeout=self.timeout)
             time.sleep(self.delay)
         except requests.RequestException:
             return

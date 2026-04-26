@@ -10,7 +10,7 @@ Tests for:
 """
 import re
 import time
-from typing import List, Optional
+from typing import List
 from urllib.parse import urlparse, urlencode, parse_qs, urljoin
 
 import requests

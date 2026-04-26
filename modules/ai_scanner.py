@@ -17,11 +17,10 @@ This scanner detects AI/LLM-powered endpoints in web applications and tests
 them for the OWASP AI Security Top 10 vulnerabilities. It uses purely
 observational, non-destructive probes.
 """
-import json
 import re
 import time
-from typing import List, Optional, Dict, Any
-from urllib.parse import urlparse, urljoin
+from typing import List, Optional
+from urllib.parse import urljoin
 
 import requests
 from .scanner_base import ScannerBase
@@ -227,9 +226,6 @@ class AIScanner(ScannerBase):
                 continue
 
             if probe in resp_text:
-                ct = ""
-                # Try to get the content type from most recent response
-                # (stored in instance for simplicity)
                 self.findings.append(self._finding(
                     title="LLM02:2025 — AI Output Echoed Without Sanitisation",
                     severity="HIGH",
@@ -673,7 +669,6 @@ class AIScanner(ScannerBase):
             except requests.RequestException:
                 continue
 
-            ct = resp.headers.get("Content-Type", "")
             body_lower = resp.text.lower()
 
             # Count AI-specific signatures in response

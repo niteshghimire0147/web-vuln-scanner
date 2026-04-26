@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Optional
 
 # ── Colour constants (degrade gracefully if colorama is absent) ──────────────
 try:
@@ -60,7 +59,7 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     """
     logger = logging.getLogger(name)
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
+        handler = logging.StreamHandler(sys.stderr)
         handler.setFormatter(_ColouredFormatter("%(message)s"))
         logger.addHandler(handler)
     logger.setLevel(level)

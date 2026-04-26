@@ -10,7 +10,6 @@ Supports:
   - Bearer / API-key token headers
   - Session persistence across the scan lifecycle
 """
-import re
 import time
 from typing import Optional
 from urllib.parse import urljoin, urlparse
@@ -124,7 +123,7 @@ class AuthHandler:
         """
         try:
             resp = self.session.get(self.login_url, timeout=self.timeout)
-        except requests.RequestException as exc:
+        except requests.RequestException:
             return False
 
         soup    = BeautifulSoup(resp.text, "html.parser")

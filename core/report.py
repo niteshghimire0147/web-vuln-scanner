@@ -10,7 +10,6 @@ Produces two output formats:
 import json
 import os
 from datetime import datetime
-from typing import Optional
 
 
 # ── Severity palette ──────────────────────────────────────────────────────────
@@ -238,8 +237,7 @@ footer{border-top:1px solid #334155;padding:20px 24px;text-align:center;color:#4
 </style>"""
 
     def _nav(self) -> str:
-        total = len(self.findings)
-        crit  = sum(1 for f in self.findings if f.get("severity") == "CRITICAL")
+        crit = sum(1 for f in self.findings if f.get("severity") == "CRITICAL")
         return f"""<nav>
   <span class="nav-brand">&#x1F6E1; WebVulnScanner</span>
   <span class="nav-meta">{self._esc(self.target_url)} &mdash; {self.timestamp[:10]}</span>
@@ -330,7 +328,6 @@ footer{border-top:1px solid #334155;padding:20px 24px;text-align:center;color:#4
         for i, f in enumerate(self.findings):
             sev    = f.get("severity", "INFORMATIONAL")
             color  = SEV_COLORS.get(sev, "#64748b")
-            bg     = SEV_BG.get(sev, "#f8fafc")
             score  = f.get("cvss", {}).get("cvss_score", "—")
             vec    = f.get("cvss", {}).get("vector_string", "")
             cards += f"""
