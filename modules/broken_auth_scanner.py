@@ -14,7 +14,7 @@ import json
 import re
 import time
 from typing import List, Optional
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin
 
 import requests
 from .scanner_base import ScannerBase

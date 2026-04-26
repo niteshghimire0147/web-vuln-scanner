@@ -9,7 +9,6 @@ and the published formulae for ISC, Exploitability, and Base Score.
 """
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 
 # ── Metric weight tables (CVSS v3.1 Specification §7.1) ──────────────────────

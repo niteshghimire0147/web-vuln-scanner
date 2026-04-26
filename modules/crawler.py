@@ -3,7 +3,6 @@ crawler.py — Web crawler that extracts URLs and HTML forms from a target site.
 
 Used by scanner modules to build a list of endpoints and form inputs to test.
 """
-import re
 import time
 from typing import List, Set, Tuple
 from urllib.parse import urljoin, urlparse

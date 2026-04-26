@@ -87,7 +87,7 @@ class HeaderAuditor(ScannerBase):
 
         try:
             resp = self.session.get(self.target, timeout=self.timeout)
-        except requests.RequestException as e:
+        except requests.RequestException:
             return self.findings
 
         headers = {k.title(): v for k, v in resp.headers.items()}

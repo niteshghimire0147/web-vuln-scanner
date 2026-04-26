@@ -13,7 +13,7 @@ Tests for:
 import re
 import time
 from typing import List
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 
 import requests
 from .scanner_base import ScannerBase

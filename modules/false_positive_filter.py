@@ -17,7 +17,6 @@ Techniques:
 from __future__ import annotations
 
 import difflib
-import html
 import re
 from dataclasses import dataclass
 from typing import List, Optional

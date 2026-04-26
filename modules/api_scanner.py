@@ -13,11 +13,9 @@ Covers:
     API9:2023  Improper Inventory Management (exposed docs, shadow APIs)
     API10:2023 Unsafe Consumption of APIs (unvalidated 3rd-party data)
 """
-import json
-import re
 import time
-from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse, urljoin, urlencode, parse_qs
+from typing import List
+from urllib.parse import urljoin
 
 import requests
 from .scanner_base import ScannerBase
@@ -119,11 +117,6 @@ class APIScanner(ScannerBase):
         REST endpoints and check for unauthenticated access to arbitrary objects.
         """
         self._log("API1: Testing Broken Object Level Authorization (BOLA)")
-        resource_endpoints = [
-            p for p in self.API_DISCOVERY_PATHS
-            if re.search(r"/(?:users|accounts|orders|products|items)/", p + "/")
-        ]
-        # Also generate parameterized versions
         test_endpoints = [
             ("/api/v1/users/1", "/api/v1/users/2"),
             ("/api/users/1",    "/api/users/2"),

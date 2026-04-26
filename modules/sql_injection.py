@@ -7,7 +7,7 @@ Tests for error-based and time-based blind SQL injection in:
 """
 import time
 from typing import List
-from urllib.parse import urlencode, urlparse, parse_qs, urljoin
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from .scanner_base import ScannerBase

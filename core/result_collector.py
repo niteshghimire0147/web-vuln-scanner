@@ -8,8 +8,6 @@ provides filtered views for downstream consumers (report, attack chain).
 import hashlib
 import threading
 from datetime import datetime
-from typing import Optional
-
 from core.cvss import score_finding
 
 
