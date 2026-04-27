@@ -25,6 +25,10 @@ MODULE_FILE: dict[str, str] = {
     "bac":   "bac.txt",
     "auth":  "auth.txt",
     "info":  "paths.txt",
+    "lfi":   "lfi.txt",
+    "cmdi":  "cmdi.txt",
+    "ssti":  "ssti.txt",
+    "xxe":   "xxe.txt",
 }
 
 

